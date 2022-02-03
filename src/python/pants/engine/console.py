@@ -93,7 +93,7 @@ class Console(SideEffecting):
         return self.yellow("-")
 
     @property
-    def use_colors(self):
+    def use_colors(self) -> bool:
         return self._use_colors
 
     def _safe_color(self, text: str, color: Callable[[str], str]) -> str:

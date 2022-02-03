@@ -381,7 +381,7 @@ class PythonSetup(Subsystem):
         return cast(bool, self.options.macos_big_sur_compatibility)
 
     @property
-    def scratch_dir(self):
+    def scratch_dir(self) -> str:
         return os.path.join(self.options.pants_workdir, *self.options_scope.split("."))
 
     def compatibility_or_constraints(self, compatibility: Iterable[str] | None) -> tuple[str, ...]:

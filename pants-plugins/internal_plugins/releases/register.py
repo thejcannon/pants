@@ -6,6 +6,7 @@ from __future__ import annotations
 from packaging.version import Version
 
 from pants.backend.python.goals.setup_py import SetupKwargs, SetupKwargsRequest
+from pants.backend.python.target_types import PythonDistribution
 from pants.core.util_rules.external_tool import (
     DownloadedExternalTool,
     ExternalTool,
@@ -75,10 +76,8 @@ class PantsReleases(Subsystem):
 
 class PantsSetupKwargsRequest(SetupKwargsRequest):
     @classmethod
-    def is_applicable(cls, _: Target) -> bool:
-        # We always use our custom `setup()` kwargs generator for `python_distribution` targets in
-        # this repo.
-        return True
+    def is_applicable(cls, target: Target) -> bool:
+        return isinstance(target, PythonDistribution)
 
 
 @rule

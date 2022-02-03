@@ -246,7 +246,7 @@ class ListValueComponent:
         return ret
 
     @property
-    def action(self):
+    def action(self) -> str:
         return self._action
 
     @classmethod

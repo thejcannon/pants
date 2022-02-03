@@ -814,7 +814,7 @@ _Tgt = TypeVar("_Tgt", bound=Target)
 @union
 @dataclass(frozen=True)
 class GenerateTargetsRequest(Generic[_Tgt]):
-    generate_from: ClassVar[type[_Tgt]]
+    generate_from: ClassVar[type[Target]]
     generator: _Tgt
 
 
@@ -1267,10 +1267,10 @@ class ScalarField(Generic[T], Field):
                 return super().compute_value(raw_value, address=address)
     """
 
-    expected_type: ClassVar[Type[T]]
+    expected_type: ClassVar[type]
     expected_type_description: ClassVar[str]
     value: Optional[T]
-    default: ClassVar[Optional[T]] = None
+    default: ClassVar["object | None"] = None
 
     @classmethod
     def compute_value(cls, raw_value: Optional[Any], address: Address) -> Optional[T]:
@@ -1282,7 +1282,7 @@ class ScalarField(Generic[T], Field):
                 raw_value,
                 expected_type=cls.expected_type_description,
             )
-        return value_or_default
+        return cast("Optional[T]", value_or_default)
 
 
 class BoolField(Field):
@@ -1410,10 +1410,10 @@ class SequenceField(Generic[T], Field):
                 return super().compute_value(raw_value, address=address)
     """
 
-    expected_element_type: ClassVar[Type[T]]
+    expected_element_type: ClassVar[type]
     expected_type_description: ClassVar[str]
     value: Optional[Tuple[T, ...]]
-    default: ClassVar[Optional[Tuple[T, ...]]] = None
+    default: ClassVar["tuple | None"] = None
 
     @classmethod
     def compute_value(
@@ -2242,7 +2242,7 @@ class InferDependenciesRequest(Generic[SF], EngineAwareParameter):
     """
 
     sources_field: SF
-    infer_from: ClassVar[Type[SF]]
+    infer_from: ClassVar[type["SourcesField"]]
 
     def debug_hint(self) -> str:
         return self.sources_field.address.spec

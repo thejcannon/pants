@@ -85,11 +85,11 @@ class Git:
             raise GitException(failure_msg or f"{cmd_str} failed with exit code {result}")
 
     @property
-    def current_rev_identifier(self):
+    def current_rev_identifier(self) -> str:
         return "HEAD"
 
     @property
-    def commit_id(self):
+    def commit_id(self) -> str:
         return self._check_output(["rev-parse", "HEAD"])
 
     @property

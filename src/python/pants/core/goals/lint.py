@@ -59,6 +59,16 @@ class LintResult(EngineAwareReturnType):
         return {"partition": self.partition_description}
 
 
+def msg_for_result(result: LintResult) -> str:
+    msg = ""
+    if result.stdout:
+        msg += f"\n{result.stdout}"
+    if result.stderr:
+        msg += f"\n{result.stderr}"
+    if msg:
+        msg = f"{msg.rstrip()}\n\n"
+    return msg
+
 @frozen_after_init
 @dataclass(unsafe_hash=True)
 class LintResults(EngineAwareReturnType):
@@ -97,15 +107,7 @@ class LintResults(EngineAwareReturnType):
             " succeeded." if self.exit_code == 0 else f" failed (exit code {self.exit_code})."
         )
 
-        def msg_for_result(result: LintResult) -> str:
-            msg = ""
-            if result.stdout:
-                msg += f"\n{result.stdout}"
-            if result.stderr:
-                msg += f"\n{result.stderr}"
-            if msg:
-                msg = f"{msg.rstrip()}\n\n"
-            return msg
+
 
         if len(self.results) == 1:
             results_msg = msg_for_result(self.results[0])

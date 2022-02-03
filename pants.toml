@@ -22,6 +22,7 @@ backend_packages.add = [
   "pants.backend.experimental.java.lint.google_java_format",
   "pants.backend.experimental.java.debug_goals",
   "pants.backend.experimental.python",
+  "pants.backend.experimental.python.mypyc",
   "pants.backend.experimental.scala",
   "pants.backend.experimental.scala.lint.scalafmt",
   "pants.backend.experimental.scala.debug_goals",
@@ -115,6 +116,9 @@ macos_big_sur_compatibility = true
 resolves = { python-default = "3rdparty/python/lockfiles/user_reqs.txt" }
 enable_resolves = true
 
+[python-infer]
+inits = true
+
 [docformatter]
 args = ["--wrap-summaries=100", "--wrap-descriptions=100"]
 
@@ -144,6 +148,39 @@ extra_requirements.add = [
 ]
 lockfile = "3rdparty/python/lockfiles/pytest.txt"
 timeout_default = 60
+
+[setuptools]
+extra_requirements = [
+  "wheel",
+  "mypy==0.930",
+  # Copied from user_reqs
+  "PyYAML<7.0,>=6.0",
+  "ansicolors==1.1.8",
+  "chevron==0.14.0",
+  "fasteners==0.16.3",
+  "freezegun==1.1.0",
+  "humbug==0.2.7",
+  "ijson==3.1.4",
+  "packaging==21.3",
+  "pex==2.1.65",
+  "psutil==5.9.0",
+  "pydevd-pycharm==203.5419.8",
+  "pytest<6.3,>=6.2.4",
+  "python-lsp-jsonrpc==1.0.0",
+  "requests[security]>=2.25.1",
+  "setproctitle==1.2.2",
+  "setuptools<58.0,>=56.0.0",
+  "toml==0.10.2",
+  "types-PyYAML==6.0.3",
+  "types-freezegun==1.1.6",
+  "types-requests==2.27.5",
+  "types-setuptools==57.4.7",
+  "types-toml==0.10.3",
+  "typing-extensions==4.0.1",
+  "dockerfile==3.2.0",
+  "hdrhistogram"
+  ]
+lockfile = "3rdparty/python/lockfiles/setuptools.txt"
 
 [test]
 extra_env_vars = [

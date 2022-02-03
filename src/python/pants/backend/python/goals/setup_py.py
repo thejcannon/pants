@@ -512,16 +512,57 @@ async def generate_chroot(
     return DistBuildChroot(chroot_digest, working_directory)
 
 
+@union
+@dataclass(frozen=True)  # type: ignore[misc]
+class SetupPyContentRequest:
+    target: Target
+    finalized_setup_kwargs: FinalizedSetupKwargs
+
+    @classmethod
+    @abstractmethod
+    def is_applicable(cls, target: Target) -> bool:
+        """Whether the kwargs implementation should be used for this target or not."""
+
+@dataclass(frozen=True)
+class SetupPyContent:
+    content: bytes
+
+@rule
+async def determine_setup_py_content(request: GenerateSetupPyRequest, union_membership: UnionMembership) -> SetupPyContent:
+    target = request.exported_target.target
+    setup_py_content_requests = union_membership.get(SetupPyContentRequest)
+    applicable_setup_py_content_requests = tuple(
+        req for req in setup_py_content_requests if req.is_applicable(target)
+    )
+
+    # If no provided implementations, fall back to our default implementation
+    finalized_setup_kwargs = await Get(FinalizedSetupKwargs, GenerateSetupPyRequest, request)
+    if not applicable_setup_py_content_requests:
+        logger.debug("determine_setup_py_content: Using default SetupPyContent")
+        content = SETUP_BOILERPLATE.format(
+            target_address_spec=request.exported_target.target.address.spec,
+            setup_kwargs_str=distutils_repr(finalized_setup_kwargs.kwargs),
+        ).encode()
+        return SetupPyContent(content)
+
+    if len(applicable_setup_py_content_requests) > 1:
+        possible_requests = sorted(plugin.__name__ for plugin in applicable_setup_py_content_requests)
+        raise ValueError(
+            f"Multiple of the registered `SetupPyContentRequest`s can work on the target "
+            f"{target.address}, and it's ambiguous which to use: {possible_requests}\n\nPlease "
+            "activate fewer implementations, or make the classmethod `is_applicable()` more "
+            "precise so that only one implementation is applicable for this target."
+        )
+    setup_py_content_request = tuple(applicable_setup_py_content_requests)[0]
+    logger.debug(f"determine_setup_py_content: Using custom SetupPyContentRequest: {setup_py_content_request}")
+    return await Get(SetupPyContent, SetupPyContentRequest, setup_py_content_request(target, finalized_setup_kwargs))  # type: ignore[abstract]
+
 @rule
 async def generate_setup_py(request: GenerateSetupPyRequest) -> GeneratedSetupPy:
     # Generate the setup script.
-    finalized_setup_kwargs = await Get(FinalizedSetupKwargs, GenerateSetupPyRequest, request)
-    setup_py_content = SETUP_BOILERPLATE.format(
-        target_address_spec=request.exported_target.target.address.spec,
-        setup_kwargs_str=distutils_repr(finalized_setup_kwargs.kwargs),
-    ).encode()
+    setup_py_content = await Get(SetupPyContent, GenerateSetupPyRequest, request)
     files_to_create = [
-        FileContent("setup.py", setup_py_content),
+        FileContent("setup.py", setup_py_content.content),
         FileContent("MANIFEST.in", b"include *.py"),
     ]
     digest = await Get(Digest, CreateDigest(files_to_create))

@@ -95,12 +95,12 @@ class PublishFieldSet(Generic[_T], FieldSet, metaclass=ABCMeta):
     """
 
     # Subclasses must provide this, to a union member (subclass) of `PublishRequest`.
-    publish_request_type: ClassVar[Type[_T]]
+    publish_request_type: ClassVar[Type[PublishRequest]]
 
     @final
     def _request(self, packages: tuple[BuiltPackage, ...]) -> _T:
         """Internal helper for the core publish goal."""
-        return self.publish_request_type(field_set=self, packages=packages)
+        return cast("_T", self.publish_request_type(field_set=self, packages=packages))
 
     @final
     @classmethod

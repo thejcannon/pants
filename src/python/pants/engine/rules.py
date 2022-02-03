@@ -359,7 +359,7 @@ class Rule(ABC):
 
     @property
     @abstractmethod
-    def output_type(self):
+    def output_type(self) -> Type:
         """An output `type` for the rule."""
 
 
@@ -442,7 +442,7 @@ class TaskRule(Rule):
         )
 
     @property
-    def output_type(self):
+    def output_type(self) -> Type:
         return self._output_type
 
 
@@ -463,7 +463,7 @@ class QueryRule(Rule):
         self.input_types = tuple(input_types)
 
     @property
-    def output_type(self):
+    def output_type(self) -> Type:
         return self._output_type
 
 

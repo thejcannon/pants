@@ -35,12 +35,12 @@ class PipRequirement:
         return self._req.project_name
 
     @property
-    def specs(self):
+    def specs(self) -> list[tuple[str, str]]:
         return self._req.specs
 
     @property
-    def url(self):
-        return self._req.url
+    def url(self) -> str:
+        return self._req.url  # type: ignore[attr-defined]
 
     def __hash__(self):
         return hash(self._req)

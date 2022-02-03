@@ -153,7 +153,7 @@ class Option(Generic[_T]):
 
     # NB: We have to ignore type because we can't `cast(_T, x)` as `_T` is purely a type-checking
     # construct and `cast()` is a runtime function.
-    DEFAULT_CONVERTER: Callable[[Any], _T] = lambda x: x  # type: ignore
+    DEFAULT_CONVERTER = lambda x: x  # type: ignore
 
     def __init__(
         self,

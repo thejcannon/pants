@@ -72,7 +72,7 @@ class PythonArtifact:
         return self._kw
 
     @property
-    def binaries(self):
+    def binaries(self) -> dict:
         return self._binaries
 
     def __str__(self) -> str:

@@ -185,7 +185,7 @@ class _ServiceState:
             self._set_state(self._TERMINATING)
 
     @property
-    def is_terminating(self):
+    def is_terminating(self) -> bool:
         """Returns True if the Service should currently be terminating.
 
         NB: `Terminating` does not have an associated "terminated" state, because the caller uses

@@ -11,14 +11,17 @@ python_sources(
 
 python_test_utils(name="test_utils")
 
-python_distribution(
-    name="pants-packaged",
-    dependencies=["./__main__.py", ":resources"],
+
+mypyc_python_distribution(
+    name="pantsc-packaged",
+    dependencies=["./__main__.py", ":resources", "3rdparty/python:python"],
     # Because we have native code, this will cause the wheel to use whatever the ABI is for the
     # interpreter used to run setup.py, e.g. `cp36m-macosx_10_15_x86_64`.
+    wheel=True,
     sdist=False,
     provides=setup_py(
-        name="pantsbuild.pants",
+        name="pantsbuild.pantsc",
+        version="2.10.0",
         description="The ergonomic and hermetic software build system for Python, Java, Scala, "
         "Go, and Shell. Pants lets you fearlessly scale up your codebase.",
         # NB: by setting `ext_modules`, we signal to setup_py and bdist_wheel that this library
@@ -28,7 +31,7 @@ python_distribution(
         # TODO(7344): the tuple syntax for ext_modules is deprecated. Use Extension once we support it.
         ext_modules=[("native_engine", {"sources": ["pants/dummy.c"]})],
     ),
-    entry_points={"console_scripts": {"pants": "src/python/pants/bin:pants"}},
+    entry_points={"console_scripts": {"pantsc": "src/python/pants/bin:pants"}},
 )
 
 # NB: we use `dummy.c` to avoid clang/gcc complaining `error: no input files` when building

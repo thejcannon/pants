@@ -11,7 +11,7 @@ import time
 import traceback
 from abc import ABCMeta
 from hashlib import sha256
-from typing import Callable, cast
+from typing import Any, Callable, Type, cast, TypeVar, overload
 
 import psutil
 
@@ -26,6 +26,8 @@ from pants.util.memo import memoized_classproperty, memoized_property
 
 logger = logging.getLogger(__name__)
 
+_T = TypeVar("_T")
+_T2 = TypeVar("_T2")
 
 class ProcessManager:
     """Manages contextual, on-disk process metadata.
@@ -90,7 +92,7 @@ class ProcessManager:
         return hasher.hexdigest()[:12]
 
     @staticmethod
-    def _maybe_cast(item, caster):
+    def _maybe_cast(item: _T, caster: Callable[[_T], _T2]) -> _T | _T2:
         """Given a casting function, attempt to cast to that type while masking common cast
         exceptions.
 
@@ -190,7 +192,15 @@ class ProcessManager:
     def metadata_file_path(cls, name, metadata_key, metadata_base_dir) -> str:
         return os.path.join(cls._get_metadata_dir_by_name(name, metadata_base_dir), metadata_key)
 
-    def read_metadata_by_name(self, metadata_key, caster=None):
+    @overload
+    def read_metadata_by_name(self, metadata_key, caster: Type[_T]) -> _T | None:
+        ...
+
+    @overload
+    def read_metadata_by_name(self, metadata_key) -> str | None:
+        ...
+
+    def read_metadata_by_name(self, metadata_key, caster =None):
         """Read process metadata using a named identity.
 
         :param string metadata_key: The metadata key (e.g. 'pid').
@@ -199,7 +209,7 @@ class ProcessManager:
         file_path = self._metadata_file_path(metadata_key)
         try:
             metadata = read_file(file_path).strip()
-            return self._maybe_cast(metadata, caster)
+            return self._maybe_cast(metadata, caster or str)
         except OSError:
             return None
 
@@ -245,12 +255,12 @@ class ProcessManager:
             )
 
     @property
-    def name(self):
+    def name(self) -> str:
         """The logical name/label of the process."""
         return self._name
 
     @memoized_property
-    def lifecycle_lock(self):
+    def lifecycle_lock(self) -> OwnerPrintingInterProcessFileLock:
         """An identity-keyed inter-process lock for safeguarding lifecycle and other operations."""
         safe_mkdir(self._metadata_base_dir)
         return OwnerPrintingInterProcessFileLock(
@@ -261,7 +271,7 @@ class ProcessManager:
         )
 
     @property
-    def fingerprint(self):
+    def fingerprint(self) -> str | None:
         """The fingerprint of the current process.
 
         This reads the current fingerprint from the `ProcessManager` metadata.
@@ -272,17 +282,17 @@ class ProcessManager:
         return self.read_metadata_by_name(self.FINGERPRINT_KEY)
 
     @property
-    def pid(self):
+    def pid(self) -> int | None:
         """The running processes pid (or None)."""
         return self.read_metadata_by_name(self.PID_KEY, int)
 
     @property
-    def process_name(self):
+    def process_name(self) -> str | None:
         """The process name, to be compared to the psutil exe_name for stale pid checking."""
         return self.read_metadata_by_name(self.PROCESS_NAME_KEY, str)
 
     @property
-    def socket(self):
+    def socket(self) -> int | None:
         """The running processes socket/port information (or None)."""
         return self.read_metadata_by_name(self.SOCKET_KEY, int)
 
@@ -513,7 +523,7 @@ class PantsDaemonProcessManager(ProcessManager, metaclass=ABCMeta):
         self._daemon_entrypoint = daemon_entrypoint
 
     @property
-    def options_fingerprint(self):
+    def options_fingerprint(self) -> str:
         """Returns the options fingerprint for the pantsd process.
 
         This should cover all options consumed by the pantsd process itself in order to start: also

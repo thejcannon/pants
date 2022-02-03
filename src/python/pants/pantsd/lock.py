@@ -20,15 +20,15 @@ def print_to_stderr(message):
 
 class OwnerPrintingInterProcessFileLock(InterProcessLock):
     @property
-    def message_path(self):
+    def message_path(self) -> str:
         return f"{self.path_str}.lock_message"
 
     @property
-    def path_str(self):
+    def path_str(self) -> str:
         return self.path.decode()
 
     @property
-    def missing_message_output(self):
+    def missing_message_output(self) -> str:
         return f"Pid {os.getpid()} waiting for a file lock ({self.path_str}), but there was no message at {self.message_path} indicating who is holding it."
 
     def acquire(self, message_fn=print_to_stderr, **kwargs):

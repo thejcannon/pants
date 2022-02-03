@@ -11,8 +11,9 @@ from pants.util.frozendict import FrozenDict
 from pants.util.meta import frozen_after_init
 from pants.util.ordered_set import FrozenOrderedSet, OrderedSet
 
+_T = TypeVar("_T", bound=type)
 
-def union(cls):
+def union(cls: _T) -> _T:
     """A class decorator to allow a class to be a union base in the engine's mechanism for
     polymorphism.
 
@@ -27,7 +28,7 @@ def union(cls):
     See https://www.pantsbuild.org/docs/rules-api-unions.
     """
     assert isinstance(cls, type)
-    cls._is_union_for = cls
+    setattr(cls, "_is_union_for", cls)
     return cls
 
 
@@ -57,9 +58,6 @@ class UnionRule:
                     "switch the first and second arguments to `UnionRule()`?"
                 )
             raise ValueError(msg)
-
-
-_T = TypeVar("_T", bound=type)
 
 
 @frozen_after_init

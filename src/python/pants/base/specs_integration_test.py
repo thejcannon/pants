@@ -32,7 +32,7 @@ SOURCES = {
         """\
         from {tmpdir}.py.base.common import NAME
 
-        def test_name():
+        def test_name() -> None:
             assert NAME == "pantsbuild"
         """
     ),
@@ -46,7 +46,7 @@ SOURCES = {
         """\
         from {tmpdir}.py.utils.strutil import capitalize
 
-        def test_capitalize():
+        def test_capitalize() -> None:
             assert capitalize("hello") == "Hello"
         """
     ),

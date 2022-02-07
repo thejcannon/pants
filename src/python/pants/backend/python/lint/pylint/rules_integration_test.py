@@ -341,7 +341,7 @@ def test_3rdparty_plugin(rule_runner: RuleRunner) -> None:
                 class PluginTest(unittest.TestCase):
                     '''Docstring.'''
 
-                    def test_plugin(self):
+                    def test_plugin(self) -> None:
                         '''Docstring.'''
                         self.assertEqual(True, True)
                 """

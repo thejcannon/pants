@@ -1,6 +1,0 @@
-from os.path import join
-
-pex_binary(
-  name = join("hello"),
-  sources = ["hello.py"],
-)

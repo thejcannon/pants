@@ -14,7 +14,7 @@ from pants.util.memo import (
 )
 
 
-def test_function_application_positional():
+def test_function_application_positional() -> None:
     calculations = []
 
     @memoized
@@ -29,7 +29,7 @@ def test_function_application_positional():
     assert [(2, 3), (3, 2)] == calculations
 
 
-def test_function_application_kwargs():
+def test_function_application_kwargs() -> None:
     calculations = []
 
     @memoized()
@@ -44,7 +44,7 @@ def test_function_application_kwargs():
     assert [(2, 3)] == calculations
 
 
-def test_function_application_mixed():
+def test_function_application_mixed() -> None:
     calculations = []
 
     @memoized
@@ -59,7 +59,7 @@ def test_function_application_mixed():
     assert [(("a",), {"fred": 42, "jane": True}), (("a", 42), {"jane": True})] == calculations
 
 
-def test_function_application_potentially_ambiguous_parameters():
+def test_function_application_potentially_ambiguous_parameters() -> None:
     calculations = []
 
     @memoized
@@ -73,7 +73,7 @@ def test_function_application_potentially_ambiguous_parameters():
     assert [((("a", 42),), {}), ((), {"a": 42})] == calculations
 
 
-def test_key_factory():
+def test_key_factory() -> None:
     def create_key(num):
         return num % 2
 
@@ -94,7 +94,7 @@ def test_key_factory():
     assert [2, 3] == calculations
 
 
-def test_cache_factory():
+def test_cache_factory() -> None:
     class SingleEntryMap(dict):
         def __setitem__(self, key, value):
             self.clear()
@@ -117,7 +117,7 @@ def test_cache_factory():
     assert [2, 3, 2] == calculations
 
 
-def test_forget():
+def test_forget() -> None:
     calculations = []
 
     @memoized
@@ -140,7 +140,7 @@ def test_forget():
     assert [2, 3, 2] == calculations
 
 
-def test_clear():
+def test_clear() -> None:
     calculations = []
 
     @memoized
@@ -173,7 +173,7 @@ class _Called:
         return self._calls
 
 
-def test_instancemethod_application_id_eq():
+def test_instancemethod_application_id_eq() -> None:
     class Foo(_Called):
         @memoized
         def calls(self):
@@ -190,7 +190,7 @@ def test_instancemethod_application_id_eq():
     assert 2, foo2.calls()
 
 
-def test_instancemethod_application_degenerate_eq():
+def test_instancemethod_application_degenerate_eq() -> None:
     class Foo(_Called):
         @memoized
         def calls_per_eq(self):
@@ -224,7 +224,7 @@ def test_instancemethod_application_degenerate_eq():
     assert 4 == foo2.calls_per_instance()
 
 
-def test_descriptor_application_invalid():
+def test_descriptor_application_invalid() -> None:
     with pytest.raises(ValueError):
         # Can't decorate a descriptor
         class Foo:
@@ -234,7 +234,7 @@ def test_descriptor_application_invalid():
                 pass
 
 
-def test_memoized_method():
+def test_memoized_method() -> None:
     class Foo:
         _x = "x0"
 
@@ -251,7 +251,7 @@ def test_memoized_method():
     assert "x1y1" == foo.method("y1")
 
 
-def test_memoized_class_methods():
+def test_memoized_class_methods() -> None:
     class Foo:
         _x = "x0"
 
@@ -274,7 +274,7 @@ def test_memoized_class_methods():
     assert "x1y1" == Foo.class_method("y1")
 
 
-def test_descriptor_application_valid():
+def test_descriptor_application_valid() -> None:
     class Foo(_Called):
         @property
         @memoized
@@ -290,7 +290,7 @@ def test_descriptor_application_valid():
     assert 2 == foo2.calls
 
 
-def test_memoized_property():
+def test_memoized_property() -> None:
     class Foo(_Called):
         @memoized_property
         def calls(self):
@@ -308,7 +308,7 @@ def test_memoized_property():
         foo2.calls = None
 
 
-def test_mutable_memoized_property():
+def test_mutable_memoized_property() -> None:
     class Foo(_Called):
         @testable_memoized_property
         def calls(self):
@@ -326,7 +326,7 @@ def test_mutable_memoized_property():
     assert foo2.calls is None
 
 
-def test_memoized_property_forget():
+def test_memoized_property_forget() -> None:
     class Foo(_Called):
         @memoized_property
         def calls(self):

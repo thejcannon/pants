@@ -155,7 +155,7 @@ def test_modify_class_value() -> None:
     assert "z1" == WithFieldToModify.class_property
 
 
-def test_set_attr():
+def test_set_attr() -> None:
     class SetValue:
         _x = "x0"
 
@@ -180,7 +180,7 @@ def test_set_attr():
     assert "s1" == SetValue.static_property
 
 
-def test_delete_attr():
+def test_delete_attr() -> None:
     class DeleteValue:
         _y = "y0"
 
@@ -204,7 +204,7 @@ def test_delete_attr():
     assert hasattr(DeleteValue, "static_property") is False
 
 
-def test_abstract_classproperty():
+def test_abstract_classproperty() -> None:
     class Abstract(ABC):
         @classproperty
         @property
@@ -244,7 +244,7 @@ def test_abstract_classproperty():
     assert Concrete2.f == "hello"
 
 
-def test_decorated_type_checkable():
+def test_decorated_type_checkable() -> None:
     @decorated_type_checkable
     def f(cls):
         return f.define_instance_of(cls)

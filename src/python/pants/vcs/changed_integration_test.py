@@ -268,7 +268,7 @@ class ChangedIntegrationTest(unittest.TestCase, AbstractTestGenerator):
         pants_run.assert_success()
         return pants_run.stdout
 
-    def test_changed_exclude_root_targets_only(self):
+    def test_changed_exclude_root_targets_only(self) -> None:
         changed_src = "src/python/python_targets/test_library.py"
         exclude_target_regexp = r"_[0-9]"
         excluded_set = {
@@ -299,7 +299,7 @@ class ChangedIntegrationTest(unittest.TestCase, AbstractTestGenerator):
             for excluded_item in excluded_set:
                 assert excluded_item not in pants_run.stdout
 
-    def test_changed_not_exclude_inner_targets(self):
+    def test_changed_not_exclude_inner_targets(self) -> None:
         changed_src = "src/python/python_targets/test_library.py"
         exclude_target_regexp = r"_[0-9]"
         excluded_set = {
@@ -330,14 +330,14 @@ class ChangedIntegrationTest(unittest.TestCase, AbstractTestGenerator):
             for excluded_item in excluded_set:
                 assert excluded_item not in pants_run.stdout
 
-    def test_changed_with_multiple_build_files(self):
+    def test_changed_with_multiple_build_files(self) -> None:
         new_build_file = "src/python/python_targets/BUILD.new"
         with create_isolated_git_repo() as worktree:
             touch(os.path.join(worktree, new_build_file))
             stdout_data = self.run_list()
             assert stdout_data.strip() == ""
 
-    def test_changed_with_deleted_source(self):
+    def test_changed_with_deleted_source(self) -> None:
         # TODO: Update to use multiple sources, with only one deleted.
         with create_isolated_git_repo() as worktree:
             safe_delete(os.path.join(worktree, "src/python/sources/sources.py"))
@@ -345,7 +345,7 @@ class ChangedIntegrationTest(unittest.TestCase, AbstractTestGenerator):
             pants_run.assert_success()
             assert pants_run.stdout.strip() == "src/python/sources:sources"
 
-    def test_changed_with_deleted_resource(self):
+    def test_changed_with_deleted_resource(self) -> None:
         with create_isolated_git_repo() as worktree:
             safe_delete(os.path.join(worktree, "src/python/sources/sources.txt"))
             pants_run = self.run_pants(["list", "--changed-since=HEAD"])
@@ -353,7 +353,7 @@ class ChangedIntegrationTest(unittest.TestCase, AbstractTestGenerator):
             assert pants_run.stdout.strip() == "src/python/sources:text"
 
     @pytest.mark.skip(reason="Unskip after rewriting these tests to stop using testprojects.")
-    def test_changed_with_deleted_target_transitive(self):
+    def test_changed_with_deleted_target_transitive(self) -> None:
         # TODO: The deleted target should be a dependee of another target. We want to make sure
         # that this causes a crash because the dependee can't find it's dependency.
         with create_isolated_git_repo() as worktree:
@@ -366,7 +366,7 @@ class ChangedIntegrationTest(unittest.TestCase, AbstractTestGenerator):
                 "src/resources/org/pantsbuild/resourceonly:.*did not exist", pants_run.stderr
             )
 
-    def test_changed_in_directory_without_build_file(self):
+    def test_changed_in_directory_without_build_file(self) -> None:
         with create_isolated_git_repo() as worktree:
             create_file_in(worktree, "new-project/README.txt", "This is important.")
             pants_run = self.run_pants(["list", "--changed-since=HEAD"])

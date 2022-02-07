@@ -14,7 +14,7 @@ from generate_docs import (
 from pants.util.docutil import doc_url
 
 
-def test_gather_value_strs():
+def test_gather_value_strs() -> None:
     help_info = {
         "a": "foo",
         "b": ["bar", 5, "baz"],
@@ -46,7 +46,7 @@ def test_find_doc_urls() -> None:
     assert matcher.find_doc_urls(strs) == {doc_url(slug) for slug in ["foo-bar", "baz3", "qux"]}
 
 
-def test_get_title_from_page_content():
+def test_get_title_from_page_content() -> None:
     page_content = textwrap.dedent(
         """
       <!DOCTYPE html><html ng-app="hub" lang="en" style="" class=" useReactApp  ">
@@ -62,7 +62,7 @@ def test_get_title_from_page_content():
     assert get_title_from_page_content(page_content) == "Welcome to Pants!"
 
 
-def test_doc_url_rewriter():
+def test_doc_url_rewriter() -> None:
     dur = DocUrlRewriter(
         {
             "foo": "Foo",

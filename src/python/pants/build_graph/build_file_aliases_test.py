@@ -8,7 +8,7 @@ from pants.build_graph.build_file_aliases import BuildFileAliases
 
 
 class TestBuildFileAliasesTest:
-    def test_create(self):
+    def test_create(self) -> None:
         assert BuildFileAliases(objects={}, context_aware_object_factories={}) == BuildFileAliases()
         objects = {"jane": 42}
         assert BuildFileAliases(
@@ -25,11 +25,11 @@ class TestBuildFileAliasesTest:
             objects=objects, context_aware_object_factories=factories
         ) == BuildFileAliases(objects=objects, context_aware_object_factories=factories)
 
-    def test_bad_context_aware_object_factories(self):
+    def test_bad_context_aware_object_factories(self) -> None:
         with pytest.raises(TypeError):
             BuildFileAliases(context_aware_object_factories={"george": 1})
 
-    def test_merge(self):
+    def test_merge(self) -> None:
         e_factory = lambda ctx: "e"
         f_factory = lambda ctx: "f"
 

@@ -47,7 +47,7 @@ SOURCES = {
         """\
         from project.lib import add
 
-        def test_add():
+        def test_add() -> None:
             assert add(2, 3) == 5
         """
     ),
@@ -71,7 +71,7 @@ SOURCES = {
         """\
         from project.lib import multiply
 
-        def test_multiply():
+        def test_multiply() -> None:
             assert multiply(2, 3) == 6
         """
     ),
@@ -79,7 +79,7 @@ SOURCES = {
         """\
         from project.lib import add, subtract
 
-        def test_arithmetic():
+        def test_arithmetic() -> None:
             assert add(4, 3) == 7 == subtract(10, 3)
         """
     ),
@@ -103,7 +103,7 @@ SOURCES = {
     "tests/python/project_test/no_src/__init__.py": "",
     "tests/python/project_test/no_src/test_no_src.py": dedent(
         """\
-        def test_true():
+        def test_true() -> None:
            assert True is True
         """
     ),
@@ -287,7 +287,7 @@ def test_default_coverage_issues_12390() -> None:
 
             from PySide2.QtWidgets import QApplication
 
-            def test_1():
+            def test_1() -> None:
                 assert True
             """
         ),

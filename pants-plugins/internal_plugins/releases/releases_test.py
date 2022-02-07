@@ -28,16 +28,16 @@ def test_branch_name_stable() -> None:
     assert "12345.1.x" == _branch_name("12345.1.2.0rc0")
 
 
-def test_invalid_test_branch_name_stable_append_alphabet():
+def test_invalid_test_branch_name_stable_append_alphabet() -> None:
     with pytest.raises(InvalidVersion):
         _branch_name("1.2.0rc0-abcd")
 
 
-def test_invalid_test_branch_name_stable_prepend_numbers():
+def test_invalid_test_branch_name_stable_prepend_numbers() -> None:
     with pytest.raises(InvalidVersion):
         _branch_name("12345-1.2.0rc0")
 
 
-def test_branch_name_unknown_suffix():
+def test_branch_name_unknown_suffix() -> None:
     with pytest.raises(ValueError):
         _branch_name("1.1.0-anything1")

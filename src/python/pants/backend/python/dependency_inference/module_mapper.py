@@ -82,7 +82,6 @@ class FirstPartyPythonMappingImpl(FrozenDict[str, Tuple[ModuleProvider, ...]]):
     import dependency inference."""
 
 
-@union
 class FirstPartyPythonMappingImplMarker:
     """An entry point for a specific implementation of mapping module names to owning targets for
     Python import dependency inference.
@@ -90,6 +89,8 @@ class FirstPartyPythonMappingImplMarker:
     All implementations will be merged together. Any modules that show up in multiple
     implementations will be marked ambiguous.
     """
+
+setattr(FirstPartyPythonMappingImplMarker, "_is_union_for", FirstPartyPythonMappingImplMarker)
 
 
 class FirstPartyPythonModuleMapping(FrozenDict[str, Tuple[ModuleProvider, ...]]):

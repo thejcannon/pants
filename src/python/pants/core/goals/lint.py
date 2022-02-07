@@ -128,12 +128,12 @@ class LintResults(EngineAwareReturnType):
         return False
 
 
-@union
 class LintTargetsRequest(StyleRequest):
     """AThe entry point for linters that need targets."""
 
+setattr(LintTargetsRequest, "_is_union_for", LintTargetsRequest)
 
-@union
+
 @dataclass(frozen=True)
 class LintFilesRequest(EngineAwareParameter):
     """The entry point for linters that do not use targets."""
@@ -145,6 +145,7 @@ class LintFilesRequest(EngineAwareParameter):
     def debug_hint(self) -> str:
         return self.name
 
+setattr(LintFilesRequest, '_is_union_for', LintFilesRequest)
 
 # If a user wants linter reports to show up in dist/ they must ensure that the reports
 # are written under this directory. E.g.,

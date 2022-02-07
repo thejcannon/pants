@@ -32,7 +32,7 @@ def test_unimplemented_goals_noop() -> None:
 class TestGoalRuleIntegration(PantsDaemonIntegrationTestBase):
     hermetic = False
 
-    def test_list_does_not_cache(self):
+    def test_list_does_not_cache(self) -> None:
         with self.pantsd_successful_run_context() as ctx:
 
             def run_list():
@@ -44,7 +44,7 @@ class TestGoalRuleIntegration(PantsDaemonIntegrationTestBase):
             second_run = run_list().stdout.splitlines()
             self.assertTrue(sorted(first_run), sorted(second_run))
 
-    def test_list_loop(self):
+    def test_list_loop(self) -> None:
         # Create a BUILD file in a nested temporary directory, and add additional targets to it.
         with self.pantsd_test_context(log_level="info") as (
             workdir,

@@ -13,7 +13,7 @@ from pants.util.ordered_set import OrderedSet
 
 
 class TestHashUtils:
-    def test_hash_all(self):
+    def test_hash_all(self) -> None:
         expected_hash = hashlib.sha1()
         expected_hash.update(b"jakejones")
         assert expected_hash.hexdigest() == hash_all(["jake", "jones"])
@@ -24,7 +24,7 @@ class TestCoercingJsonEncodingTest:
     def _coercing_json_encode(o):
         return json.dumps(o, cls=CoercingEncoder)
 
-    def test_normal_object_encoding(self):
+    def test_normal_object_encoding(self) -> None:
         assert self._coercing_json_encode({}) == "{}"
         assert self._coercing_json_encode(()) == "[]"
         assert self._coercing_json_encode([]) == "[]"
@@ -35,21 +35,21 @@ class TestCoercingJsonEncodingTest:
         assert self._coercing_json_encode([{"a": 3}]) == '[{"a": 3}]'
         assert self._coercing_json_encode({1}) == "[1]"
 
-    def test_rejects_ordered_dict(self):
+    def test_rejects_ordered_dict(self) -> None:
         with pytest.raises(TypeError, match=r"CoercingEncoder does not support OrderedDict inputs"):
             self._coercing_json_encode(OrderedDict([("a", 3)]))
 
-    def test_non_string_dict_key_coercion(self):
+    def test_non_string_dict_key_coercion(self) -> None:
         assert self._coercing_json_encode({("a", "b"): "asdf"}) == r'{"[\"a\", \"b\"]": "asdf"}'
 
-    def test_string_like_dict_key_coercion(self):
+    def test_string_like_dict_key_coercion(self) -> None:
         assert self._coercing_json_encode({"a": 3}) == '{"a": 3}'
         assert self._coercing_json_encode({b"a": 3}) == '{"a": 3}'
 
-    def test_nested_dict_key_coercion(self):
+    def test_nested_dict_key_coercion(self) -> None:
         assert self._coercing_json_encode({(1,): {(2,): 3}}) == '{"[1]": {"[2]": 3}}'
 
-    def test_collection_ordering(self):
+    def test_collection_ordering(self) -> None:
         assert self._coercing_json_encode({2, 1, 3}) == "[1, 2, 3]"
         assert self._coercing_json_encode({"b": 4, "a": 3}) == '{"a": 3, "b": 4}'
         assert self._coercing_json_encode([("b", 4), ("a", 3)]) == '[["b", 4], ["a", 3]]'
@@ -65,7 +65,7 @@ class TestCoercingJsonEncodingTest:
 
 
 class TestJsonHashing:
-    def test_known_checksums(self):
+    def test_known_checksums(self) -> None:
         """Check a laundry list of supported inputs to stable_json_sha1().
 
         This checks both that the method can successfully handle the type of input object, but also
@@ -81,7 +81,7 @@ class TestJsonHashing:
         assert json_hash([{"a": 3}]) == "8f4e36849a0b8fbe9c4a822c80fbee047c65458a"
         assert json_hash({1}) == "f629ae44b7b3dcfed444d363e626edf411ec69a8"
 
-    def test_rejects_ordered_collections(self):
+    def test_rejects_ordered_collections(self) -> None:
         with pytest.raises(TypeError, match=r"CoercingEncoder does not support OrderedDict inputs"):
             json_hash(OrderedDict([("a", 3)]))
         with pytest.raises(TypeError, match=r"CoercingEncoder does not support OrderedSet inputs"):

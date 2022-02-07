@@ -8,7 +8,7 @@ from pants.testutil.pants_integration_test import ensure_daemon, run_pants
 from pants.util.contextutil import temporary_dir
 
 
-def test_visualize_to():
+def test_visualize_to() -> None:
     # Tests usage of the `--engine-visualize-to=` option, which triggers background
     # visualization of the graph. There are unit tests confirming the content of the rendered
     # results.

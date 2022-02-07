@@ -85,7 +85,7 @@ PACKAGE = os.path.join(SOURCE_ROOT, "pants_test")
 
 GOOD_TEST = dedent(
     """\
-    def test():
+    def test() -> None:
         pass
     """
 )
@@ -139,7 +139,7 @@ def test_failing(rule_runner: RuleRunner) -> None:
         {
             f"{PACKAGE}/tests.py": dedent(
                 """\
-                def test():
+                def test() -> None:
                     assert False
                 """
             ),
@@ -186,7 +186,7 @@ def test_dependencies(rule_runner: RuleRunner) -> None:
                 from pants_test.lib3 import add_three
                 from ordered_set import OrderedSet
 
-                def test():
+                def test() -> None:
                     assert add_one(1) == 2
                     assert add_two(1) == 3
                     assert add_three(1) == 4
@@ -250,10 +250,10 @@ def test_passthrough_args(rule_runner: RuleRunner) -> None:
         {
             f"{PACKAGE}/tests.py": dedent(
                 """\
-                def test_run_me():
+                def test_run_me() -> None:
                   pass
 
-                def test_ignore_me():
+                def test_ignore_me() -> None:
                   pass
                 """
             ),
@@ -278,7 +278,7 @@ def test_config_file(rule_runner: RuleRunner) -> None:
             ),
             f"{PACKAGE}/tests.py": dedent(
                 """\
-                def test():
+                def test() -> None:
                     print("All good!")
                 """
             ),
@@ -374,7 +374,7 @@ def test_execution_slot_variable(rule_runner: RuleRunner) -> None:
                 """\
                 import os
 
-                def test_fail_printing_slot_env_var():
+                def test_fail_printing_slot_env_var() -> None:
                     slot = os.getenv("SLOT")
                     print(f"Value of slot is {slot}")
                     # Deliberately fail the test so the SLOT output gets printed to stdout
@@ -397,7 +397,7 @@ def test_extra_env_vars(rule_runner: RuleRunner) -> None:
                 """\
                 import os
 
-                def test_args():
+                def test_args() -> None:
                     assert os.getenv("ARG_WITH_VALUE_VAR") == "arg_with_value_var"
                     assert os.getenv("ARG_WITHOUT_VALUE_VAR") == "arg_without_value_value"
                     assert os.getenv("PYTHON_TESTS_VAR_WITH_VALUE") == "python_tests_var_with_value"
@@ -479,7 +479,7 @@ def test_setup_plugins_and_runtime_package_dependency(rule_runner: RuleRunner) -
                 import os.path
                 import subprocess
 
-                def test_embedded_binary():
+                def test_embedded_binary() -> None:
                     assert os.path.exists("bin.pex")
                     assert b"Hello, test!" in subprocess.check_output(args=['./bin.pex'])
 
@@ -488,7 +488,7 @@ def test_setup_plugins_and_runtime_package_dependency(rule_runner: RuleRunner) -
                     # normal dependencies.
                     assert not os.path.exists("{PACKAGE}/say_hello.py")
 
-                def test_additional_plugins():
+                def test_additional_plugins() -> None:
                     assert os.path.exists("used.txt")
                     assert not os.path.exists("unused.txt")
                 """
@@ -522,7 +522,7 @@ def test_local_dists(rule_runner: RuleRunner) -> None:
                 """
                 from foo.bar import BAR
 
-                def test_bar():
+                def test_bar() -> None:
                   assert BAR == "LOCAL DIST"
                 """
             ),

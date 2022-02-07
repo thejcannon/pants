@@ -175,7 +175,7 @@ class TestContextutilTest:
             with open_zip(os.path.join(tempdir, "test"), "w", allowZip64=False) as zf:
                 assert not zf._allowZip64  # type: ignore[attr-defined] # intended to fail type check
 
-    def test_open_zip_raises_exception_on_falsey_paths(self):
+    def test_open_zip_raises_exception_on_falsey_paths(self) -> None:
         falsey = (None, "", False)
         for invalid in falsey:
             with pytest.raises(InvalidZipPath), open_zip(invalid):

@@ -73,7 +73,7 @@ def setup_sources_targets() -> Iterator[None]:
 
 
 @unittest.skip("flaky: https://github.com/pantsbuild/pants/issues/8520")
-def test_missing_sources_warnings():
+def test_missing_sources_warnings() -> None:
     target_to_unmatched_globs = {
         "missing-globs": ["*.a"],
         "missing-rglobs": ["**/*.a"],
@@ -104,7 +104,7 @@ def test_missing_sources_warnings():
 
 
 @unittest.skip("flaky: https://github.com/pantsbuild/pants/issues/8520")
-def test_existing_sources():
+def test_existing_sources() -> None:
     target_full = f"{_SOURCES_TARGET_BASE}:text"
     pants_run = run_pants(
         ["filedeps", target_full],
@@ -114,7 +114,7 @@ def test_existing_sources():
     assert "[WARN] Unmatched glob" not in pants_run.stderr
 
 
-def test_existing_directory_with_no_build_files_fails():
+def test_existing_directory_with_no_build_files_fails() -> None:
     pants_run = run_pants(["list", f"{_NO_BUILD_FILE_TARGET_BASE}::"])
     pants_run.assert_failure()
     assert (
@@ -124,7 +124,7 @@ def test_existing_directory_with_no_build_files_fails():
 
 
 @unittest.skip("flaky: https://github.com/pantsbuild/pants/issues/6787")
-def test_error_message():
+def test_error_message() -> None:
     with setup_sources_targets():
         for target in _ERR_TARGETS:
             expected_excerpts = _ERR_TARGETS[target]

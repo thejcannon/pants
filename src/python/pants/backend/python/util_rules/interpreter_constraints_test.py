@@ -161,7 +161,7 @@ def test_interpreter_constraints_includes_python2(constraints) -> None:
         [],
     ],
 )
-def test_interpreter_constraints_do_not_include_python2(constraints):
+def test_interpreter_constraints_do_not_include_python2(constraints) -> None:
     assert InterpreterConstraints(constraints).includes_python2() is False
 
 
@@ -252,7 +252,7 @@ def test_interpreter_constraints_require_python38(constraints) -> None:
         [],
     ],
 )
-def test_interpreter_constraints_do_not_require_python38(constraints):
+def test_interpreter_constraints_do_not_require_python38(constraints) -> None:
     ics = InterpreterConstraints(constraints)
     universe = ("2.7", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11")
     assert ics.requires_python38_or_newer(universe) is False

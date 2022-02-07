@@ -41,12 +41,12 @@ class TestOwnerPrintingInterProcessFileLock(unittest.TestCase):
         except OSError:
             pass
 
-    def test_non_blocking_attempt(self):
+    def test_non_blocking_attempt(self) -> None:
         self.lock_process.start()
         self.lock_held.wait()
         self.assertFalse(self.lock.acquire(blocking=False))
 
-    def test_message(self):
+    def test_message(self) -> None:
         self.lock_process.start()
         self.lock_held.wait()
         self.assertTrue(os.path.exists(self.lock.message_path))
@@ -61,7 +61,7 @@ class TestOwnerPrintingInterProcessFileLock(unittest.TestCase):
 
         self.lock.acquire(blocking=False, message_fn=message_fn)
 
-    def test_blocking(self):
+    def test_blocking(self) -> None:
         self.lock_process.start()
         self.lock_held.wait()
         self.assertFalse(self.lock.acquire(timeout=0.1))
@@ -83,11 +83,11 @@ class TestOwnerPrintingInterProcessFileLock(unittest.TestCase):
         # value just in case.
         self.assertTrue(self.lock.acquire(timeout=30, message_fn=message_fn))
 
-    def test_reentrant(self):
+    def test_reentrant(self) -> None:
         self.assertTrue(self.lock.acquire())
         self.assertTrue(self.lock.acquire())
 
-    def test_release(self):
+    def test_release(self) -> None:
         self.assertTrue(self.lock.acquire())
         self.assertTrue(self.lock.acquired)
         self.lock.release()

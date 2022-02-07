@@ -419,7 +419,7 @@ class TestRule:
         assert "pants.engine.console.Console" in error_str
 
 
-def test_rule_index_creation_fails_with_bad_declaration_type():
+def test_rule_index_creation_fails_with_bad_declaration_type() -> None:
     with pytest.raises(TypeError) as exc:
         RuleIndex.create([A()])
     assert str(exc.value) == (
@@ -455,7 +455,7 @@ class TestRuleArgumentAnnotation:
             def a_named_rule(a: int, b: str) -> bool:
                 return False
 
-    def test_goal_rule_automatically_gets_desc_from_goal(self):
+    def test_goal_rule_automatically_gets_desc_from_goal(self) -> None:
         @goal_rule
         def some_goal_rule() -> Example:
             return Example(exit_code=0)
@@ -472,7 +472,7 @@ class TestRuleArgumentAnnotation:
 
 
 class TestGraphVertexTypeAnnotation:
-    def test_nominal(self):
+    def test_nominal(self) -> None:
         @rule
         def dry(a: int, b: str, c: float) -> bool:
             return False
@@ -486,7 +486,7 @@ class TestGraphVertexTypeAnnotation:
             def dry(a: int, b: str, c: float):
                 return False
 
-    def test_bad_return_annotation(self):
+    def test_bad_return_annotation(self) -> None:
         with pytest.raises(MissingReturnTypeAnnotation):
 
             @rule
@@ -500,7 +500,7 @@ class TestGraphVertexTypeAnnotation:
             def dry(a: int, b, c: float) -> bool:
                 return False
 
-    def test_bad_parameter_annotation(self):
+    def test_bad_parameter_annotation(self) -> None:
         with pytest.raises(MissingParameterTypeAnnotation):
 
             @rule

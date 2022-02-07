@@ -41,19 +41,19 @@ class TestProcessManager(unittest.TestCase):
         self.pm = ProcessManager(self.NAME, metadata_base_dir=safe_mkdtemp())
         self.pmm = self.pm
 
-    def test_maybe_cast(self):
+    def test_maybe_cast(self) -> None:
         self.assertIsNone(self.pmm._maybe_cast(None, int))
         self.assertEqual(self.pmm._maybe_cast("3333", int), 3333)
         self.assertEqual(self.pmm._maybe_cast("ssss", int), "ssss")
 
-    def test_get_metadata_dir_by_name(self):
+    def test_get_metadata_dir_by_name(self) -> None:
         pm = ProcessManager(self.NAME, metadata_base_dir=self.BUILDROOT)
         self.assertEqual(
             ProcessManager._get_metadata_dir_by_name(self.NAME, self.BUILDROOT),
             os.path.join(self.BUILDROOT, pm.host_fingerprint, self.NAME),
         )
 
-    def test_readwrite_metadata_by_name(self):
+    def test_readwrite_metadata_by_name(self) -> None:
         with temporary_dir() as tmpdir, unittest.mock.patch(
             "pants.pantsd.process_manager.get_buildroot", return_value=tmpdir
         ):
@@ -64,7 +64,7 @@ class TestProcessManager(unittest.TestCase):
             )
 
     @pytest.mark.skip(reason="flaky: https://github.com/pantsbuild/pants/issues/6836")
-    def test_deadline_until(self):
+    def test_deadline_until(self) -> None:
         with self.assertRaises(ProcessManager.Timeout):
             with self.captured_logging(logging.INFO) as captured:
                 self.pmm._deadline_until(
@@ -75,7 +75,7 @@ class TestProcessManager(unittest.TestCase):
             f"Expected between 4 and 6 infos, got: {captured.infos()}",
         )
 
-    def test_wait_for_file(self):
+    def test_wait_for_file(self) -> None:
         with temporary_dir() as td:
             test_filename = os.path.join(td, "test.out")
             safe_file_dump(test_filename, "test")
@@ -83,7 +83,7 @@ class TestProcessManager(unittest.TestCase):
                 test_filename, "file to be created", "file was created", timeout=0.1
             )
 
-    def test_wait_for_file_timeout(self):
+    def test_wait_for_file_timeout(self) -> None:
         with temporary_dir() as td:
             with self.assertRaises(ProcessManager.Timeout):
                 self.pmm._wait_for_file(
@@ -93,7 +93,7 @@ class TestProcessManager(unittest.TestCase):
                     timeout=0.1,
                 )
 
-    def test_await_metadata_by_name(self):
+    def test_await_metadata_by_name(self) -> None:
         with temporary_dir() as tmpdir, unittest.mock.patch(
             "pants.pantsd.process_manager.get_buildroot", return_value=tmpdir
         ):
@@ -106,26 +106,26 @@ class TestProcessManager(unittest.TestCase):
                 self.TEST_VALUE,
             )
 
-    def test_purge_metadata(self):
+    def test_purge_metadata(self) -> None:
         with unittest.mock.patch("pants.pantsd.process_manager.rm_rf") as mock_rm:
             self.pmm.purge_metadata_by_name(self.NAME)
         self.assertGreater(mock_rm.call_count, 0)
 
-    def test_purge_metadata_error(self):
+    def test_purge_metadata_error(self) -> None:
         with unittest.mock.patch("pants.pantsd.process_manager.rm_rf") as mock_rm:
             mock_rm.side_effect = OSError(errno.EACCES, os.strerror(errno.EACCES))
             with self.assertRaises(ProcessManager.MetadataError):
                 self.pmm.purge_metadata_by_name(self.NAME)
         self.assertGreater(mock_rm.call_count, 0)
 
-    def test_await_pid(self):
+    def test_await_pid(self) -> None:
         with unittest.mock.patch.object(ProcessManager, "await_metadata_by_name") as mock_await:
             self.pm.await_pid(5)
         mock_await.assert_called_once_with(
             "pid", f"{self.NAME} to start", f"{self.NAME} started", 5, caster=unittest.mock.ANY
         )
 
-    def test_await_socket(self):
+    def test_await_socket(self) -> None:
         with unittest.mock.patch.object(ProcessManager, "await_metadata_by_name") as mock_await:
             self.pm.await_socket(5)
         mock_await.assert_called_once_with(
@@ -136,24 +136,24 @@ class TestProcessManager(unittest.TestCase):
             caster=unittest.mock.ANY,
         )
 
-    def test_write_pid(self):
+    def test_write_pid(self) -> None:
         with unittest.mock.patch.object(ProcessManager, "write_metadata_by_name") as mock_write:
             self.pm.write_pid(31337)
         mock_write.assert_called_once_with("pid", "31337")
 
-    def test_write_socket(self):
+    def test_write_socket(self) -> None:
         with unittest.mock.patch.object(ProcessManager, "write_metadata_by_name") as mock_write:
             self.pm.write_socket("/path/to/unix/socket")
         mock_write.assert_called_once_with("socket", "/path/to/unix/socket")
 
-    def test_as_process(self):
+    def test_as_process(self) -> None:
         sentinel = 3333
         with unittest.mock.patch("psutil.Process", **PATCH_OPTS) as mock_proc:
             mock_proc.return_value = sentinel
             self.pm.write_pid(sentinel)
             self.assertEqual(self.pm._as_process(), sentinel)
 
-    def test_as_process_no_pid(self):
+    def test_as_process_no_pid(self) -> None:
         fake_pid = 3
         with unittest.mock.patch("psutil.Process", **PATCH_OPTS) as mock_proc:
             mock_proc.side_effect = psutil.NoSuchProcess(fake_pid)
@@ -161,11 +161,11 @@ class TestProcessManager(unittest.TestCase):
             with self.assertRaises(psutil.NoSuchProcess):
                 self.pm._as_process()
 
-    def test_as_process_none(self):
+    def test_as_process_none(self) -> None:
         with self.assertRaises(self.pm.NotStarted):
             self.pm._as_process()
 
-    def test_is_alive_neg(self):
+    def test_is_alive_neg(self) -> None:
         with unittest.mock.patch.object(
             ProcessManager, "_as_process", **PATCH_OPTS
         ) as mock_as_process:
@@ -173,7 +173,7 @@ class TestProcessManager(unittest.TestCase):
             self.assertFalse(self.pm.is_alive())
             mock_as_process.assert_called_once_with(self.pm)
 
-    def test_is_alive(self):
+    def test_is_alive(self) -> None:
         with unittest.mock.patch.object(
             ProcessManager, "_as_process", **PATCH_OPTS
         ) as mock_as_process:
@@ -183,7 +183,7 @@ class TestProcessManager(unittest.TestCase):
             self.assertTrue(self.pm.is_alive())
             mock_as_process.assert_called_with(self.pm)
 
-    def test_is_alive_zombie(self):
+    def test_is_alive_zombie(self) -> None:
         with unittest.mock.patch.object(
             ProcessManager, "_as_process", **PATCH_OPTS
         ) as mock_as_process:
@@ -193,7 +193,7 @@ class TestProcessManager(unittest.TestCase):
             self.assertFalse(self.pm.is_alive())
             mock_as_process.assert_called_with(self.pm)
 
-    def test_is_alive_zombie_exception(self):
+    def test_is_alive_zombie_exception(self) -> None:
         with unittest.mock.patch.object(
             ProcessManager, "_as_process", **PATCH_OPTS
         ) as mock_as_process:
@@ -201,7 +201,7 @@ class TestProcessManager(unittest.TestCase):
             self.assertFalse(self.pm.is_alive())
             mock_as_process.assert_called_with(self.pm)
 
-    def test_is_alive_stale_pid(self):
+    def test_is_alive_stale_pid(self) -> None:
         with unittest.mock.patch.object(
             ProcessManager, "_as_process", **PATCH_OPTS
         ) as mock_as_process:
@@ -212,7 +212,7 @@ class TestProcessManager(unittest.TestCase):
             self.assertFalse(self.pm.is_alive())
             mock_as_process.assert_called_with(self.pm)
 
-    def test_is_alive_extra_check(self):
+    def test_is_alive_extra_check(self) -> None:
         def extra_check(process):
             return False
 
@@ -225,25 +225,25 @@ class TestProcessManager(unittest.TestCase):
             self.assertFalse(self.pm.is_alive(extra_check))
             mock_as_process.assert_called_with(self.pm)
 
-    def test_purge_metadata_aborts(self):
+    def test_purge_metadata_aborts(self) -> None:
         with unittest.mock.patch.object(ProcessManager, "is_alive", return_value=True):
             with self.assertRaises(ProcessManager.MetadataError):
                 self.pm.purge_metadata()
 
-    def test_purge_metadata_alive_but_forced(self):
+    def test_purge_metadata_alive_but_forced(self) -> None:
         with unittest.mock.patch.object(
             ProcessManager, "is_alive", return_value=True
         ), unittest.mock.patch("pants.pantsd.process_manager.rm_rf") as mock_rm_rf:
             self.pm.purge_metadata(force=True)
             self.assertGreater(mock_rm_rf.call_count, 0)
 
-    def test_kill(self):
+    def test_kill(self) -> None:
         with unittest.mock.patch("os.kill", **PATCH_OPTS) as mock_kill:
             self.pm.write_pid(42)
             self.pm._kill(0)
             mock_kill.assert_called_once_with(42, 0)
 
-    def test_kill_no_pid(self):
+    def test_kill_no_pid(self) -> None:
         with unittest.mock.patch("os.kill", **PATCH_OPTS) as mock_kill:
             self.pm._kill(0)
             self.assertFalse(mock_kill.called, "If we have no pid, kills should noop gracefully.")
@@ -260,7 +260,7 @@ class TestProcessManager(unittest.TestCase):
             yield mock_kill, mock_alive, mock_purge
             self.assertGreater(mock_alive.call_count, 0)
 
-    def test_terminate_quick_death(self):
+    def test_terminate_quick_death(self) -> None:
         with self.setup_terminate() as (mock_kill, mock_alive, mock_purge):
             mock_kill.side_effect = OSError("oops")
             mock_alive.side_effect = [True, False]
@@ -268,7 +268,7 @@ class TestProcessManager(unittest.TestCase):
             self.assertEqual(mock_kill.call_count, 1)
             self.assertEqual(mock_purge.call_count, 1)
 
-    def test_terminate_quick_death_no_purge(self):
+    def test_terminate_quick_death_no_purge(self) -> None:
         with self.setup_terminate() as (mock_kill, mock_alive, mock_purge):
             mock_kill.side_effect = OSError("oops")
             mock_alive.side_effect = [True, False]
@@ -276,14 +276,14 @@ class TestProcessManager(unittest.TestCase):
             self.assertEqual(mock_kill.call_count, 1)
             self.assertEqual(mock_purge.call_count, 0)
 
-    def test_terminate_already_dead(self):
+    def test_terminate_already_dead(self) -> None:
         with self.setup_terminate() as (mock_kill, mock_alive, mock_purge):
             mock_alive.return_value = False
             self.pm.terminate(purge=True)
             self.assertEqual(mock_kill.call_count, 0)
             self.assertEqual(mock_purge.call_count, 1)
 
-    def test_terminate_no_kill(self):
+    def test_terminate_no_kill(self) -> None:
         with self.setup_terminate() as (mock_kill, mock_alive, mock_purge):
             mock_alive.return_value = True
             with self.assertRaises(ProcessManager.NonResponsiveProcess):
@@ -322,17 +322,17 @@ class TestProcessManager(unittest.TestCase):
             if chk_post_parent:
                 mock_post_parent.assert_called_once_with(self.pm)
 
-    def test_daemon_spawn_parent(self):
+    def test_daemon_spawn_parent(self) -> None:
         with self.mock_daemonize_context(chk_post_parent=True) as mock_fork:
             mock_fork.return_value = 1  # Simulate the parent.
             self.pm.daemon_spawn()
 
-    def test_daemon_spawn_child(self):
+    def test_daemon_spawn_child(self) -> None:
         with self.mock_daemonize_context(chk_post_child=True) as mock_fork:
             mock_fork.return_value = 0  # Simulate the child.
             self.pm.daemon_spawn()
 
-    def test_callbacks(self):
+    def test_callbacks(self) -> None:
         # For coverage.
         self.pm.pre_fork()
         self.pm.post_fork_child()

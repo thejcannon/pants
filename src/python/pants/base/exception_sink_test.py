@@ -23,14 +23,14 @@ def _gen_sink_subclass():
     return AnonymousSink
 
 
-def test_reset_log_location():
+def test_reset_log_location() -> None:
     sink = _gen_sink_subclass()
     with temporary_dir() as tmpdir:
         sink.reset_log_location(tmpdir)
         assert tmpdir == sink._log_dir
 
 
-def test_set_invalid_log_location():
+def test_set_invalid_log_location() -> None:
     assert os.path.isdir("/does/not/exist") is False
     sink = _gen_sink_subclass()
     with pytest.raises(ExceptionSink.ExceptionSinkError) as exc:
@@ -67,7 +67,7 @@ def test_set_invalid_log_location():
     assert match(Platform.current, err_str) in str(exc.value)
 
 
-def test_log_exception():
+def test_log_exception() -> None:
     sink = _gen_sink_subclass()
 
     with temporary_dir() as tmpdir:
@@ -109,7 +109,7 @@ XXX
             assert bool(re.search(err_rx, shared_log_file.read()))
 
 
-def test_backup_logging_on_fatal_error(caplog):
+def test_backup_logging_on_fatal_error(caplog) -> None:
     sink = _gen_sink_subclass()
     with temporary_dir() as tmpdir:
         sink.reset_log_location(tmpdir)

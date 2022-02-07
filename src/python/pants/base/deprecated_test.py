@@ -101,7 +101,7 @@ def test_removal_version_bad() -> None:
     with pytest.raises(BadSemanticVersionError):
 
         @deprecated("a.a.a")
-        def test_func0():
+        def test_func0() -> None:
             pass
 
     with pytest.raises(BadSemanticVersionError):
@@ -110,7 +110,7 @@ def test_removal_version_bad() -> None:
     with pytest.raises(BadSemanticVersionError):
 
         @deprecated(1.0)  # type: ignore[arg-type]
-        def test_func1():
+        def test_func1() -> None:
             pass
 
     with pytest.raises(BadSemanticVersionError):
@@ -119,13 +119,13 @@ def test_removal_version_bad() -> None:
     with pytest.raises(BadSemanticVersionError):
 
         @deprecated("1.a.0")
-        def test_func1a():
+        def test_func1a() -> None:
             pass
 
     with pytest.raises(NonDevSemanticVersionError):
 
         @deprecated("1.0.0")
-        def test_func1b():
+        def test_func1b() -> None:
             pass
 
 
@@ -135,7 +135,7 @@ def test_removal_version_same() -> None:
         warn_or_error(_FAKE_CUR_VERSION, "fake description", None)
 
     @deprecated(_FAKE_CUR_VERSION)
-    def test_func():
+    def test_func() -> None:
         pass
 
     with pytest.raises(CodeRemovedError):
@@ -147,7 +147,7 @@ def test_removal_version_lower() -> None:
         warn_or_error("0.0.27.dev0", "fake description", None)
 
     @deprecated("0.0.27.dev0")
-    def test_func():
+    def test_func() -> None:
         pass
 
     with pytest.raises(CodeRemovedError):

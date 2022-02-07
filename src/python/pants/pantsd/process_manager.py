@@ -87,8 +87,12 @@ class ProcessManager:
         subtracting from the current time, which might hit aliasing issues.
         """
         hasher = sha256()
-        for component in os.uname():
-            hasher.update(component.encode())
+        uname = os.uname()
+        hasher.update(uname.sysname.encode())
+        hasher.update(uname.nodename.encode())
+        hasher.update(uname.release.encode())
+        hasher.update(uname.version.encode())
+        hasher.update(uname.machine.encode())
         return hasher.hexdigest()[:12]
 
     @staticmethod

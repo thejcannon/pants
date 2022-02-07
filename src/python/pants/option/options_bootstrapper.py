@@ -27,6 +27,11 @@ from pants.util.strutil import ensure_text
 
 
 @dataclass(frozen=True)
+class _FileContent:
+    path: str
+    content: bytes
+
+@dataclass(frozen=True)
 class OptionsBootstrapper:
     """Holds the result of the first stage of options parsing, and assists with parsing full
     options."""
@@ -102,6 +107,7 @@ class OptionsBootstrapper:
         GlobalOptions.register_bootstrap_options(register_global)
         return bootstrap_options
 
+
     @classmethod
     def create(
         cls, env: Mapping[str, str], args: Sequence[str], *, allow_pantsrc: bool
@@ -117,13 +123,10 @@ class OptionsBootstrapper:
         """
         with warnings.catch_warnings(record=True):
             # We can't use pants.engine.fs.FileContent here because it would cause a circular dep.
-            @dataclass(frozen=True)
-            class FileContent:
-                path: str
-                content: bytes
 
-            def filecontent_for(path: str) -> FileContent:
-                return FileContent(
+
+            def filecontent_for(path: str) -> _FileContent:
+                return _FileContent(
                     ensure_text(path),
                     read_file(path, binary_mode=True),
                 )

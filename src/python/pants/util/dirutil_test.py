@@ -348,7 +348,7 @@ class TestDirutilTest:
             assert not os.path.exists(safe_path)
             assert not os.path.exists(expected_file)
 
-    def test_safe_rmtree_link(self):
+    def test_safe_rmtree_link(self) -> None:
         with temporary_dir() as td:
             real = os.path.join(td, "real")
             link = os.path.join(td, "link")

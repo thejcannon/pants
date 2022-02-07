@@ -63,6 +63,24 @@ _AMBIGUOUS_PYTHON_MACRO_SYMBOLS = {
     "poetry_requirements",
 }
 
+class Registrar:
+    def __init__(self, parse_state: ParseState, type_alias: str) -> None:
+        self._type_alias = type_alias
+        self.parse_state = parse_state
+
+    def __call__(self, **kwargs: Any) -> TargetAdaptor:
+        # Target names default to the name of the directory their BUILD file is in
+        # (as long as it's not the root directory).
+        if "name" not in kwargs:
+            dirname = os.path.basename(self.parse_state.rel_path())
+            if not dirname:
+                raise UnaddressableObjectError(
+                    "Targets in root-level BUILD files must be named explicitly."
+                )
+            kwargs["name"] = dirname
+        target_adaptor = TargetAdaptor(self._type_alias, **kwargs)
+        self.parse_state.add(target_adaptor)
+        return target_adaptor
 
 class Parser:
     def __init__(
@@ -89,27 +107,11 @@ class Parser:
         # file parse with a reset of the ParseState for the calling thread.
         parse_state = ParseState()
 
-        class Registrar:
-            def __init__(self, type_alias: str) -> None:
-                self._type_alias = type_alias
 
-            def __call__(self, **kwargs: Any) -> TargetAdaptor:
-                # Target names default to the name of the directory their BUILD file is in
-                # (as long as it's not the root directory).
-                if "name" not in kwargs:
-                    dirname = os.path.basename(parse_state.rel_path())
-                    if not dirname:
-                        raise UnaddressableObjectError(
-                            "Targets in root-level BUILD files must be named explicitly."
-                        )
-                    kwargs["name"] = dirname
-                target_adaptor = TargetAdaptor(self._type_alias, **kwargs)
-                parse_state.add(target_adaptor)
-                return target_adaptor
 
         symbols: dict[str, Any] = dict(object_aliases.objects)
         symbols.update(
-            (alias, Registrar(alias))
+            (alias, Registrar(parse_state, alias))
             for alias in target_type_aliases
             if not use_deprecated_python_macros or alias not in _AMBIGUOUS_PYTHON_MACRO_SYMBOLS
         )

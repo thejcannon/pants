@@ -17,17 +17,17 @@ from pants.backend.project_info.regex_lint import (
 # This is not something we technically need to test, but it's useful for sanity checking, and for
 # showcasing common use-cases.
 class TestMatcher:
-    def test_match(self):
+    def test_match(self) -> None:
         m = Matcher(r"Here is a two-digit number: \d\d")
         assert m.matches("Here is a two-digit number: 42")
         assert not m.matches("Here is a two-digit number: 4")
 
-    def test_inverse_match(self):
+    def test_inverse_match(self) -> None:
         m = Matcher(r"Here is a two-digit number: \d\d", inverted=True)
         assert not m.matches("Here is a two-digit number: 42")
         assert m.matches("Here is a two-digit number: 4")
 
-    def test_multiline_match(self):
+    def test_multiline_match(self) -> None:
         m = Matcher("^bar$")
         assert not m.matches("foo\nbar\nbaz\n")
         m = Matcher("(?m)^bar$")

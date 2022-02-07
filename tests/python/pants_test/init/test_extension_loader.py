@@ -143,12 +143,12 @@ class LoaderTest(unittest.TestCase):
         self.assertEqual(0, len(build_configuration.rules))
         self.assertEqual(0, len(build_configuration.target_types))
 
-    def test_load_valid_empty(self):
+    def test_load_valid_empty(self) -> None:
         with self.create_register() as backend_package:
             load_backend(self.bc_builder, backend_package)
             self.assert_empty()
 
-    def test_load_valid_partial_aliases(self):
+    def test_load_valid_partial_aliases(self) -> None:
         aliases = BuildFileAliases(objects={"obj1": DummyObject1, "obj2": DummyObject2})
         with self.create_register(build_file_aliases=lambda: aliases) as backend_package:
             load_backend(self.bc_builder, backend_package)
@@ -157,7 +157,7 @@ class LoaderTest(unittest.TestCase):
             self.assertEqual(DummyObject1, registered_aliases.objects["obj1"])
             self.assertEqual(DummyObject2, registered_aliases.objects["obj2"])
 
-    def test_load_invalid_entrypoint(self):
+    def test_load_invalid_entrypoint(self) -> None:
         def build_file_aliases(bad_arg):
             return BuildFileAliases()
 
@@ -165,12 +165,12 @@ class LoaderTest(unittest.TestCase):
             with self.assertRaises(BuildConfigurationError):
                 load_backend(self.bc_builder, backend_package)
 
-    def test_load_invalid_module(self):
+    def test_load_invalid_module(self) -> None:
         with self.create_register(module_name="register2") as backend_package:
             with self.assertRaises(BuildConfigurationError):
                 load_backend(self.bc_builder, backend_package)
 
-    def test_load_missing_plugin(self):
+    def test_load_missing_plugin(self) -> None:
         with self.assertRaises(PluginNotFound):
             self.load_plugins(["Foobar"])
 
@@ -237,7 +237,7 @@ class LoaderTest(unittest.TestCase):
     def load_plugins(self, plugins):
         load_plugins(self.bc_builder, plugins, self.working_set)
 
-    def test_plugin_load_and_order(self):
+    def test_plugin_load_and_order(self) -> None:
         d1 = self.get_mock_plugin("demo1", "0.0.1", after=lambda: ["demo2"])
         d2 = self.get_mock_plugin("demo2", "0.0.3")
         self.working_set.add(d1)
@@ -258,7 +258,7 @@ class LoaderTest(unittest.TestCase):
         with self.assertRaises(VersionConflict):
             self.load_plugins(["demo2>=0.0.5"])
 
-    def test_plugin_installs_alias(self):
+    def test_plugin_installs_alias(self) -> None:
         def reg_alias():
             return BuildFileAliases(
                 objects={"FROMPLUGIN1": DummyObject1, "FROMPLUGIN2": DummyObject2},
@@ -278,7 +278,7 @@ class LoaderTest(unittest.TestCase):
         self.assertEqual(DummyObject1, registered_aliases.objects["FROMPLUGIN1"])
         self.assertEqual(DummyObject2, registered_aliases.objects["FROMPLUGIN2"])
 
-    def test_rules(self):
+    def test_rules(self) -> None:
         def backend_rules():
             return [example_rule]
 
@@ -296,7 +296,7 @@ class LoaderTest(unittest.TestCase):
             FrozenOrderedSet([example_rule.rule, example_plugin_rule.rule]),
         )
 
-    def test_target_types(self):
+    def test_target_types(self) -> None:
         def target_types():
             return [DummyTarget, DummyTarget2]
 
@@ -317,7 +317,7 @@ class LoaderTest(unittest.TestCase):
         self.load_plugins(["new-targets"])
         assert self.bc_builder.create().target_types == (DummyTarget, DummyTarget2, PluginTarget)
 
-    def test_backend_plugin_ordering(self):
+    def test_backend_plugin_ordering(self) -> None:
         def reg_alias():
             return BuildFileAliases(objects={"override-alias": DummyObject2})
 

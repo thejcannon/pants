@@ -381,11 +381,7 @@ class Target:
         # NB: We ensure that each Target subtype has its own `PluginField` class so that
         # registering a plugin field doesn't leak across target types.
 
-        @union
-        class PluginField:
-            pass
-
-        return PluginField
+        return union(type("PluginField", (), {}))
 
     def __repr__(self) -> str:
         fields = ", ".join(str(field) for field in self.field_values.values())

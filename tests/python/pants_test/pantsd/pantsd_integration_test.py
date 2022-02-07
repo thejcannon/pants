@@ -60,7 +60,7 @@ compilation_failure_dir_layout = {
 class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
     hermetic = False
 
-    def test_pantsd_run(self):
+    def test_pantsd_run(self) -> None:
         with self.pantsd_successful_run_context(log_level="debug") as ctx:
             with setup_tmpdir({"foo/BUILD": "files(sources=[])"}) as tmpdir:
                 ctx.runner(["list", f"{tmpdir}/foo::"])
@@ -69,7 +69,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
                 ctx.runner(["list", f"{tmpdir}/foo::"])
                 ctx.checker.assert_running()
 
-    def test_pantsd_broken_pipe(self):
+    def test_pantsd_broken_pipe(self) -> None:
         with self.pantsd_test_context() as (workdir, pantsd_config, checker):
             run = self.run_pants_with_workdir(
                 "help | head -1", workdir=workdir, config=pantsd_config, shell=True
@@ -77,7 +77,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             self.assertNotIn("broken pipe", run.stderr.lower())
             checker.assert_started()
 
-    def test_pantsd_pantsd_runner_doesnt_die_after_failed_run(self):
+    def test_pantsd_pantsd_runner_doesnt_die_after_failed_run(self) -> None:
         with self.pantsd_test_context() as (workdir, pantsd_config, checker):
             # Run target that throws an exception in pants.
             with setup_tmpdir(compilation_failure_dir_layout) as tmpdir:
@@ -94,7 +94,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             ).assert_success()
             checker.assert_running()
 
-    def test_pantsd_lifecycle_invalidation(self):
+    def test_pantsd_lifecycle_invalidation(self) -> None:
         """Run with different values of daemon=True options, which should trigger restarts."""
         with self.pantsd_successful_run_context() as ctx:
             last_pid = None
@@ -189,7 +189,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             assert "reinitializing scheduler" in third_stderr
             assert second_pid == third_pid
 
-    def test_pantsd_lifecycle_non_invalidation(self):
+    def test_pantsd_lifecycle_non_invalidation(self) -> None:
         with self.pantsd_successful_run_context() as ctx:
             cmds = (["help"], ["--no-colors", "help"], ["help"])
             last_pid = None
@@ -201,7 +201,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
                     self.assertEqual(last_pid, next_pid)
                 last_pid = next_pid
 
-    def test_pantsd_lifecycle_non_invalidation_on_config_string(self):
+    def test_pantsd_lifecycle_non_invalidation_on_config_string(self) -> None:
         with temporary_dir() as dist_dir_root, temporary_dir() as config_dir:
             # Create a variety of config files that change an option that does _not_ affect the
             # daemon's fingerprint (only the Scheduler's), and confirm that it stays up.
@@ -225,7 +225,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
                         self.assertEqual(last_pid, next_pid)
                     last_pid = next_pid
 
-    def test_pantsd_lifecycle_shutdown_for_broken_scheduler(self):
+    def test_pantsd_lifecycle_shutdown_for_broken_scheduler(self) -> None:
         with self.pantsd_test_context() as (workdir, config, checker):
             # Run with valid options.
             self.run_pants_with_workdir(["help"], workdir=workdir, config=config).assert_success()
@@ -267,7 +267,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
                 assert line_pair[0] == line_pair[1]
 
     @unittest.skip("flaky: https://github.com/pantsbuild/pants/issues/7622")
-    def test_pantsd_filesystem_invalidation(self):
+    def test_pantsd_filesystem_invalidation(self) -> None:
         """Runs with pantsd enabled, in a loop, while another thread invalidates files."""
         with self.pantsd_successful_run_context() as ctx:
             cmd = ["list", "::"]
@@ -284,7 +284,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
 
             join()
 
-    def test_pantsd_client_env_var_is_inherited_by_pantsd_runner_children(self):
+    def test_pantsd_client_env_var_is_inherited_by_pantsd_runner_children(self) -> None:
         expected_key = "TEST_ENV_VAR_FOR_PANTSD_INTEGRATION_TEST"
         expected_value = "333"
         with self.pantsd_successful_run_context() as ctx:
@@ -307,7 +307,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
 
             self.assertEqual(expected_value, "".join(result.stdout).strip())
 
-    def test_pantsd_launch_env_var_is_not_inherited_by_pantsd_runner_children(self):
+    def test_pantsd_launch_env_var_is_not_inherited_by_pantsd_runner_children(self) -> None:
         with self.pantsd_test_context() as (workdir, pantsd_config, checker):
             with environment_as(NO_LEAKS="33"):
                 self.run_pants_with_workdir(
@@ -322,7 +322,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             ).assert_failure()
             checker.assert_running()
 
-    def test_pantsd_touching_a_file_does_not_restart_daemon(self):
+    def test_pantsd_touching_a_file_does_not_restart_daemon(self) -> None:
         test_file = "testprojects/src/python/print_env/main.py"
         config = {
             "GLOBAL": {"pantsd_invalidation_globs": '["testprojects/src/python/print_env/*"]'}
@@ -341,7 +341,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             time.sleep(10)
             ctx.checker.assert_running()
 
-    def test_pantsd_invalidation_file_tracking(self):
+    def test_pantsd_invalidation_file_tracking(self) -> None:
         test_dir = "testprojects/src/python/print_env"
         config = {"GLOBAL": {"pantsd_invalidation_globs": f'["{test_dir}/*"]'}}
         with self.pantsd_successful_run_context(extra_config=config) as ctx:
@@ -364,7 +364,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
 
             self.assertIn("saw filesystem changes covered by invalidation globs", full_pants_log())
 
-    def test_pantsd_invalidation_pants_toml_file(self):
+    def test_pantsd_invalidation_pants_toml_file(self) -> None:
         # Test tmp_pants_toml (--pants-config-files=$tmp_pants_toml)'s removal
         tmp_pants_toml = os.path.abspath("testprojects/test_pants.toml")
 
@@ -381,7 +381,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             os.unlink(tmp_pants_toml)
             ctx.checker.assert_stopped()
 
-    def test_pantsd_pid_deleted(self):
+    def test_pantsd_pid_deleted(self) -> None:
         with self.pantsd_successful_run_context() as ctx:
             ctx.runner(["help"])
             ctx.checker.assert_started()
@@ -395,7 +395,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
 
             ctx.checker.assert_stopped()
 
-    def test_pantsd_pid_change(self):
+    def test_pantsd_pid_change(self) -> None:
         with self.pantsd_successful_run_context() as ctx:
             ctx.runner(["help"])
             ctx.checker.assert_started()
@@ -415,7 +415,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             os.unlink(pidpath)
 
     @pytest.mark.skip(reason="flaky: https://github.com/pantsbuild/pants/issues/8193")
-    def test_pantsd_memory_usage(self):
+    def test_pantsd_memory_usage(self) -> None:
         """Validates that after N runs, memory usage has increased by no more than X percent."""
         number_of_runs = 10
         max_memory_increase_fraction = 0.40  # TODO https://github.com/pantsbuild/pants/issues/7647
@@ -448,7 +448,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
                 ),
             )
 
-    def test_pantsd_max_memory_usage(self):
+    def test_pantsd_max_memory_usage(self) -> None:
         """Validates that the max_memory_usage setting is respected."""
         # We set a very, very low max memory usage, which forces pantsd to restart immediately.
         max_memory_usage_bytes = 130
@@ -464,7 +464,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             # Assert that a pid file is written, but that the server stops afterward.
             ctx.checker.assert_started_and_stopped()
 
-    def test_pantsd_invalidation_stale_sources(self):
+    def test_pantsd_invalidation_stale_sources(self) -> None:
         test_path = "daemon_correctness_test_0001"
         test_build_file = os.path.join(test_path, "BUILD")
         test_src_file = os.path.join(test_path, "some_file.py")
@@ -532,13 +532,13 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             assert not child_process.is_running()
             checker.assert_running()
 
-    def test_pantsd_sigint(self):
+    def test_pantsd_sigint(self) -> None:
         self._assert_pantsd_keyboardinterrupt_signal(
             signal.SIGINT,
             regexps=["Interrupted by user."],
         )
 
-    def test_sigint_kills_request_waiting_for_lock(self):
+    def test_sigint_kills_request_waiting_for_lock(self) -> None:
         """Test that, when a pailgun request is blocked waiting for another one to end, sending
         SIGINT to the blocked run will kill it."""
         config = {"GLOBAL": {"pantsd_timeout_when_multiple_invocations": -1, "level": "debug"}}
@@ -572,7 +572,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             result.assert_success()
             checker.assert_running()
 
-    def test_pantsd_unicode_environment(self):
+    def test_pantsd_unicode_environment(self) -> None:
         with self.pantsd_successful_run_context(extra_env={"XXX": "¡"}) as ctx:
             result = ctx.runner(["help"])
             ctx.checker.assert_started()
@@ -580,7 +580,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
 
     # This is a regression test for a bug where we would incorrectly detect a cycle if two targets swapped their
     # dependency relationship (#7404).
-    def test_dependencies_swap(self):
+    def test_dependencies_swap(self) -> None:
         template = dedent(
             """
             python_source(
@@ -614,7 +614,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             list_and_verify(a_deps='dependencies = [":B"],', b_deps="")
             list_and_verify(a_deps="", b_deps='dependencies = [":A"],')
 
-    def test_concurrent_overrides_pantsd(self):
+    def test_concurrent_overrides_pantsd(self) -> None:
         """Tests that the --concurrent flag overrides the --pantsd flag, because we don't allow
         concurrent runs under pantsd."""
         config = {"GLOBAL": {"concurrent": True, "pantsd": True}}
@@ -625,7 +625,7 @@ class TestPantsDaemonIntegration(PantsDaemonIntegrationTestBase):
             pants_run.assert_success()
             self.assertNotIn("Connecting to pantsd", pants_run.stderr)
 
-    def test_unhandled_exceptions_only_log_exceptions_once(self):
+    def test_unhandled_exceptions_only_log_exceptions_once(self) -> None:
         """Tests that the unhandled exceptions triggered by LocalPantsRunner instances don't
         manifest as a PantsRunFinishedWithFailureException.
 

@@ -24,7 +24,7 @@ class LogLevel(Enum):
     DEBUG = "debug"
 
 
-def test_global_scope():
+def test_global_scope() -> None:
     def do_test(args, kwargs, expected_display_args, expected_scoped_cmd_line_args):
         # The scoped and unscoped args are the same in global scope.
         expected_unscoped_cmd_line_args = expected_scoped_cmd_line_args
@@ -72,7 +72,7 @@ def test_global_scope():
     do_test(["--foo", "--bar"], {}, ["--foo=<str>", "--bar=<str>"], ["--foo", "--bar"])
 
 
-def test_non_global_scope():
+def test_non_global_scope() -> None:
     def do_test(
         args,
         kwargs,
@@ -135,7 +135,7 @@ def test_default() -> None:
     do_test(["--foo"], {"type": LogLevel, "default": LogLevel.DEBUG}, "debug")
 
 
-def test_compute_default():
+def test_compute_default() -> None:
     def do_test(expected_default: Optional[Any], **kwargs):
         kwargs["default"] = RankedValue(Rank.HARDCODED, kwargs["default"])
         assert expected_default == HelpInfoExtracter.compute_default(**kwargs)
@@ -148,7 +148,7 @@ def test_compute_default():
     do_test(LogLevel.INFO, type=LogLevel, default=LogLevel.INFO)
 
 
-def test_deprecated():
+def test_deprecated() -> None:
     kwargs = {"removal_version": "999.99.9", "removal_hint": "do not use this"}
     ohi = HelpInfoExtracter("").get_option_help_info(["--foo"], kwargs)
     assert "999.99.9" == ohi.removal_version
@@ -157,27 +157,27 @@ def test_deprecated():
     assert ohi.deprecation_active
 
 
-def test_not_deprecated():
+def test_not_deprecated() -> None:
     ohi = HelpInfoExtracter("").get_option_help_info(["--foo"], {})
     assert ohi.removal_version is None
     assert not ohi.deprecation_active
 
 
-def test_deprecation_start_version_past():
+def test_deprecation_start_version_past() -> None:
     kwargs = {"deprecation_start_version": "1.0.0", "removal_version": "999.99.9"}
     ohi = HelpInfoExtracter("").get_option_help_info(["--foo"], kwargs)
     assert "999.99.9" == ohi.removal_version
     assert ohi.deprecation_active
 
 
-def test_deprecation_start_version_future():
+def test_deprecation_start_version_future() -> None:
     kwargs = {"deprecation_start_version": "999.99.8", "removal_version": "999.99.9"}
     ohi = HelpInfoExtracter("").get_option_help_info(["--foo"], kwargs)
     assert "999.99.9" == ohi.removal_version
     assert not ohi.deprecation_active
 
 
-def test_passthrough():
+def test_passthrough() -> None:
     kwargs = {"passthrough": True, "type": list, "member_type": str}
     ohi = HelpInfoExtracter("").get_option_help_info(["--thing"], kwargs)
     assert 2 == len(ohi.display_args)
@@ -203,7 +203,7 @@ def test_list_of_enum() -> None:
     assert ohi.choices == ("info", "debug")
 
 
-def test_grouping():
+def test_grouping() -> None:
     def do_test(kwargs, expected_basic=False, expected_advanced=False):
         def exp_to_len(exp):
             return int(exp)  # True -> 1, False -> 0.
@@ -223,7 +223,7 @@ def test_grouping():
     do_test({"advanced": True}, expected_advanced=True)
 
 
-def test_get_all_help_info():
+def test_get_all_help_info() -> None:
     class Global(Subsystem):
         options_scope = GLOBAL_SCOPE
         help = "Global options."

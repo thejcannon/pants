@@ -298,7 +298,7 @@ def no_exception():
         ),
     ],
 )
-def test_default_value_type_assert(option_kwargs, assert_expected):
+def test_default_value_type_assert(option_kwargs, assert_expected) -> None:
     def register(opts: Options) -> None:
         opts.register(GLOBAL_SCOPE, "--opt", **option_kwargs)
 
@@ -1111,7 +1111,7 @@ class OptionsTest(unittest.TestCase):
             sorted_specs = sorted(options.specs)
             assert ["bar", "fleem:tgt", "foo", "morx:tgt"] == sorted_specs
 
-    def test_passthru_args_subsystems_and_goals(self):
+    def test_passthru_args_subsystems_and_goals(self) -> None:
         # Test that passthrough args are applied.
         options = Options.create(
             env={},
@@ -1127,7 +1127,7 @@ class OptionsTest(unittest.TestCase):
             "passconsumer"
         ).passthing
 
-    def test_at_most_one_goal_with_passthru_args(self):
+    def test_at_most_one_goal_with_passthru_args(self) -> None:
         with pytest.raises(Options.AmbiguousPassthroughError) as exc:
             Options.create(
                 env={},
@@ -1140,7 +1140,7 @@ class OptionsTest(unittest.TestCase):
             "(args after `--`) is ambiguous."
         ) in str(exc.value)
 
-    def test_passthru_args_not_interpreted(self):
+    def test_passthru_args_not_interpreted(self) -> None:
         # Test that passthrough args are not interpreted.
         options = Options.create(
             env={},
@@ -1174,7 +1174,7 @@ class OptionsTest(unittest.TestCase):
             "consumer"
         ).string
 
-    def test_global_scope_env_vars(self):
+    def test_global_scope_env_vars(self) -> None:
         def check_pants_foo(expected_val, env):
             val = self._parse(env=env).for_global_scope().pants_foo
             assert expected_val == val

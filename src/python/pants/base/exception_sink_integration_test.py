@@ -97,7 +97,7 @@ def test_logs_unhandled_exception(tmp_path: Path) -> None:
 class ExceptionSinkIntegrationTest(PantsDaemonIntegrationTestBase):
     hermetic = False
 
-    def test_dumps_logs_on_signal(self):
+    def test_dumps_logs_on_signal(self) -> None:
         """Send signals which are handled, but don't get converted into a KeyboardInterrupt."""
         signal_names = {
             signal.SIGQUIT: "SIGQUIT",
@@ -118,7 +118,7 @@ class ExceptionSinkIntegrationTest(PantsDaemonIntegrationTestBase):
                 )
                 assert_graceful_signal_log_matches(pid, signum, signame, read_file(shared_log_file))
 
-    def test_dumps_traceback_on_sigabrt(self):
+    def test_dumps_traceback_on_sigabrt(self) -> None:
         # SIGABRT sends a traceback to the log file for the current process thanks to
         # faulthandler.enable().
         with self.pantsd_successful_run_context() as ctx:

@@ -45,11 +45,11 @@ class OptionHelpFormatterTest(unittest.TestCase):
         assert "help for foo" in lines[6 if choices else 5]
         return lines[4] if choices else lines[3]
 
-    def test_format_help(self):
+    def test_format_help(self) -> None:
         default_line = self._format_for_single_option(default="MYDEFAULT")
         assert default_line.lstrip() == "default: MYDEFAULT"
 
-    def test_format_help_choices(self):
+    def test_format_help_choices(self) -> None:
         default_line = self._format_for_single_option(
             typ=str, default="kiwi", choices=["apple", "banana", "kiwi"]
         )
@@ -70,7 +70,7 @@ class OptionHelpFormatterTest(unittest.TestCase):
             show_advanced=show_advanced, show_deprecated=show_deprecated, color=False
         ).format_options(oshi)
 
-    def test_suppress_advanced(self):
+    def test_suppress_advanced(self) -> None:
         args = ["--foo"]
         kwargs = {"advanced": True}
         lines = self._format_for_global_scope(False, False, args, kwargs)
@@ -79,7 +79,7 @@ class OptionHelpFormatterTest(unittest.TestCase):
         lines = self._format_for_global_scope(True, False, args, kwargs)
         assert len(lines) == 18
 
-    def test_suppress_deprecated(self):
+    def test_suppress_deprecated(self) -> None:
         args = ["--foo"]
         kwargs = {"removal_version": "33.44.55.dev0"}
         lines = self._format_for_global_scope(False, False, args, kwargs)
@@ -88,7 +88,7 @@ class OptionHelpFormatterTest(unittest.TestCase):
         lines = self._format_for_global_scope(True, True, args, kwargs)
         assert len(lines) == 23
 
-    def test_provider_info(self):
+    def test_provider_info(self) -> None:
         lines = self._format_for_global_scope(False, False, ["--foo"], {})
         assert len(lines) == 14
         assert "Activated by help.test" in lines

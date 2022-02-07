@@ -60,6 +60,8 @@ class InvalidLockfileError(Exception):
     pass
 
 
+_LockfileMetadataSubclass = TypeVar("_LockfileMetadataSubclass", bound="LockfileMetadata")
+
 @dataclass(frozen=True)
 class LockfileMetadata:
     """Base class for metadata that is attached to a given lockfile.
@@ -71,7 +73,6 @@ class LockfileMetadata:
     To construct an instance of the most recent concrete subclass, call `LockfileMetadata.new()`.
     """
 
-    _LockfileMetadataSubclass = TypeVar("_LockfileMetadataSubclass", bound="LockfileMetadata")
 
     scope: ClassVar[LockfileScope]
 

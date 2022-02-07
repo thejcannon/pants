@@ -156,7 +156,7 @@ from pants.testutil.rule_runner import RuleRunner
         ),
     ],
 )
-def test_render_targets_as_json(expanded_target_infos, exclude_defaults, expected_output):
+def test_render_targets_as_json(expanded_target_infos, exclude_defaults, expected_output) -> None:
     actual_output = peek.render_json(expanded_target_infos, exclude_defaults)
     assert actual_output == expected_output
 

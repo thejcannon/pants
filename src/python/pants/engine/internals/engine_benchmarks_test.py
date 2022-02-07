@@ -33,14 +33,14 @@ async def wide(index: int) -> Wide:
     return Wide(index)
 
 
-def test_bench_deep():
+def test_bench_deep() -> None:
     rule_runner = RuleRunner(rules=[deep, QueryRule(Deep, (int,))])
     for _ in range(0, 10):
         rule_runner.scheduler.scheduler.invalidate_all()
         _ = rule_runner.request(Deep, [10000])
 
 
-def test_bench_wide():
+def test_bench_wide() -> None:
     rule_runner = RuleRunner(rules=[wide, QueryRule(Wide, (int,))])
     for _ in range(0, 5):
         rule_runner.scheduler.scheduler.invalidate_all()

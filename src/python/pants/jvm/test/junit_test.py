@@ -319,7 +319,7 @@ def test_vintage_scala_simple_success(rule_runner: RuleRunner) -> None:
                 import junit.framework.Assert._
 
                 class SimpleTest extends TestCase {
-                   def testHello(): Unit = {
+                   def testHello() -> None: Unit = {
                       assertTrue("Hello!" == "Hello!")
                    }
                 }

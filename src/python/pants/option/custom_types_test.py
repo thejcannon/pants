@@ -71,7 +71,7 @@ class TestCustomTypes:
     def assert_split_list(self, s: str, *, expected: List[str]) -> None:
         assert expected == ListValueComponent._split_modifier_expr(s)
 
-    def test_unset_bool(self):
+    def test_unset_bool(self) -> None:
         # UnsetBool should only be use-able as a singleton value via its type.
         with pytest.raises(NotImplementedError):
             UnsetBool()

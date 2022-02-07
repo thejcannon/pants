@@ -34,6 +34,11 @@ _RESERVED_NAMES = {"api-types", "global", "goals", "subsystems", "targets", "too
 # Subsystems used outside of any rule.
 _GLOBAL_SUBSYSTEMS: set[type[Subsystem]] = {GlobalOptions, Changed, CliOptions}
 
+class Category(Enum):
+    goal = "goal"
+    reserved_name = "reserved name"
+    subsystem = "subsystem"
+    target_type = "target type"
 
 @dataclass(frozen=True)
 class BuildConfiguration:
@@ -70,11 +75,7 @@ class BuildConfiguration:
         return FrozenOrderedSet(self.union_rule_to_providers.keys())
 
     def __post_init__(self) -> None:
-        class Category(Enum):
-            goal = "goal"
-            reserved_name = "reserved name"
-            subsystem = "subsystem"
-            target_type = "target type"
+
 
         name_to_categories: DefaultDict[str, set[Category]] = defaultdict(set)
         normalized_to_orig_name: dict[str, str] = {}

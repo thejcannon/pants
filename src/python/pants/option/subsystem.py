@@ -151,14 +151,11 @@ class Option(Generic[_T]):
             E.g. `converter=tuple`
     """
 
-    # NB: We have to ignore type because we can't `cast(_T, x)` as `_T` is purely a type-checking
-    # construct and `cast()` is a runtime function.
-    DEFAULT_CONVERTER = lambda x: x  # type: ignore
 
     def __init__(
         self,
         *args: str,
-        converter: Callable[[Any], _T] = DEFAULT_CONVERTER,
+        converter: Callable[[Any], _T] = lambda x: x,
         **kwargs: Any,
     ):
         self.args = args

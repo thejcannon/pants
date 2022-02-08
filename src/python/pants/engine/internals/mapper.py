@@ -151,8 +151,13 @@ class AddressFamily:
             f"name_to_target_adaptors={sorted(self.name_to_target_adaptors.keys())})"
         )
 
+def filter_for_tag(tag: str) -> Callable[[Target], bool]:
+    def filter_target(tgt: Target) -> bool:
+        return tag in (tgt.get(Tags).value or [])
 
-@frozen_after_init
+    return filter_target
+
+#@frozen_after_init
 @dataclass(unsafe_hash=True)
 class AddressSpecsFilter:
     """Filters addresses with the `--tags` and `--exclude-target-regexp` options."""
@@ -178,12 +183,6 @@ class AddressSpecsFilter:
 
     @memoized_property
     def _tag_filter(self):
-        def filter_for_tag(tag: str) -> Callable[[Target], bool]:
-            def filter_target(tgt: Target) -> bool:
-                return tag in (tgt.get(Tags).value or [])
-
-            return filter_target
-
         return and_filters(create_filters(self.tags, filter_for_tag))
 
     def matches(self, target: Target) -> bool:

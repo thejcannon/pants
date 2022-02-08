@@ -57,7 +57,6 @@ class RewrittenBuildFile:
     change_descriptions: tuple[str, ...]
 
 
-@union
 @dataclass(frozen=True)
 class RewrittenBuildFileRequest(EngineAwareParameter):
     path: str
@@ -85,6 +84,7 @@ class RewrittenBuildFileRequest(EngineAwareParameter):
     def green(self, s: str) -> str:
         return cast(str, green(s)) if self.colors_enabled else s
 
+setattr(RewrittenBuildFileRequest, "_is_union_for", RewrittenBuildFileRequest)
 
 class DeprecationFixerRequest(RewrittenBuildFileRequest):
     """A fixer for deprecations.

@@ -109,11 +109,7 @@ class BuildFileAliases:
         if not isinstance(other, BuildFileAliases):
             raise TypeError(f"Can only merge other BuildFileAliases, given {other}")
 
-        def merge(*items):
-            merged: dict = {}
-            for item in items:
-                merged.update(item)
-            return merged
+
 
         objects = merge(self.objects, other.objects)
         context_aware_object_factories = merge(
@@ -123,3 +119,9 @@ class BuildFileAliases:
             objects=objects,
             context_aware_object_factories=context_aware_object_factories,
         )
+
+def merge(*items):
+    merged: dict = {}
+    for item in items:
+        merged.update(item)
+    return merged

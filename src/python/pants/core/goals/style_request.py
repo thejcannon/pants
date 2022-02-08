@@ -44,7 +44,7 @@ def style_batch_size_help(uppercase: str, lowercase: str) -> str:
     )
 
 
-@frozen_after_init
+# @frozen_after_init
 @dataclass(unsafe_hash=True)
 class StyleRequest(Generic[_FS], EngineAwareParameter, metaclass=ABCMeta):
     """A request to format or lint a collection of `FieldSet`s.

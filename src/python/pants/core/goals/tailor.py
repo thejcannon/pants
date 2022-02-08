@@ -68,8 +68,16 @@ def default_sources_for_target_type(tgt_type: type[Target]) -> tuple[str, ...]:
             return field.default or tuple()
     return tuple()
 
+def fmt_val(indent: str, v) -> str:
+    if isinstance(v, str):
+        return f'"{v}"'
+    if isinstance(v, tuple):
+        val_parts = [f"\n{indent*2}{fmt_val(indent, x)}" for x in v]
+        val_str = ",".join(val_parts) + ("," if v else "")
+        return f"[{val_str}\n{indent}]"
+    return repr(v)
 
-@frozen_after_init
+# @frozen_after_init
 @dataclass(order=True, unsafe_hash=True)
 class PutativeTarget:
     """A potential target to add, detected by various heuristics.
@@ -206,14 +214,7 @@ class PutativeTarget:
         return dataclasses.replace(self, comments=self.comments + tuple(comments))
 
     def generate_build_file_stanza(self, indent: str) -> str:
-        def fmt_val(v) -> str:
-            if isinstance(v, str):
-                return f'"{v}"'
-            if isinstance(v, tuple):
-                val_parts = [f"\n{indent*2}{fmt_val(x)}" for x in v]
-                val_str = ",".join(val_parts) + ("," if v else "")
-                return f"[{val_str}\n{indent}]"
-            return repr(v)
+
 
         has_name = self.addressable and self.name != os.path.basename(self.path)
         if self.kwargs or has_name:
@@ -221,7 +222,7 @@ class PutativeTarget:
                 **({"name": self.name} if has_name else {}),
                 **self.kwargs,  # type: ignore[arg-type]
             }
-            _kwargs_str_parts = [f"\n{indent}{k}={fmt_val(v)}" for k, v in _kwargs.items()]
+            _kwargs_str_parts = [f"\n{indent}{k}={fmt_val(indent, v)}" for k, v in _kwargs.items()]
             kwargs_str = ",".join(_kwargs_str_parts) + ",\n"
         else:
             kwargs_str = ""

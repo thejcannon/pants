@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import PurePath
 from typing import Iterable, NamedTuple, Sequence, cast
 
+from requests import request
+
 from pants.base.deprecated import resolve_conflicting_options, warn_or_error
 from pants.base.specs import AncestorGlobSpec, RawSpecsWithoutFileOwners, RecursiveGlobSpec
 from pants.build_graph.address import BuildFileAddressRequest, ResolveError
@@ -37,6 +39,8 @@ from pants.engine.target import (
     AllTargets,
     AllTargetsRequest,
     AllUnexpandedTargets,
+    AugmentDependenciesRequest,
+    AugmentedDependencies,
     CoarsenedTarget,
     CoarsenedTargets,
     CoarsenedTargetsRequest,
@@ -1070,7 +1074,7 @@ async def _get_injected_dependencies(
 ) -> tuple[InjectedDependencies, ...]:
     inject_request_types = union_membership.get(InjectDependenciesRequest)
     injected = await MultiGet(
-        Get(InjectedDependencies, InjectDependenciesRequest, inject_request_type(request.field))
+        Get(InjectedDependencies, InjectDependenciesRequest, inject_request_type(dependencies_field))
         for inject_request_type in inject_request_types
         if isinstance(dependencies_field, inject_request_type.inject_for)
     )
@@ -1100,6 +1104,18 @@ async def _get_inferred_dependencies(
         )
     return inferred
 
+@rule_helper
+async def _get_augmented_dependencies(
+    union_membership: UnionMembership,
+    tgt: Target
+) -> tuple(Address, ...):
+    request_types = union_membership.get(AugmentDependenciesRequest)
+    augmented = await MultiGet(
+        Get(AugmentedDependencies, AugmentDependenciesRequest, request_type(request_type.field_set_type.create(tgt)))
+        for request_type in request_types
+        if request_type.field_set_type.is_applicable(tgt)
+    )
+    return augmented
 
 @rule_helper
 async def _get_generated_target_dependencies(
@@ -1200,6 +1216,7 @@ async def resolve_dependencies(
 
     injected = await _get_injected_dependencies(union_membership, request.field)
     inferred = await _get_inferred_dependencies(union_membership, tgt.get(SourcesField))
+    augmented = await _get_augmented_dependencies(union_membership)
     generated_addresses = await _get_generated_target_dependencies(
         target_types_to_generate_requests, tgt
     )

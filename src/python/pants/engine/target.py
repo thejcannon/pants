@@ -2495,6 +2495,7 @@ class ExplicitlyProvidedDependencies:
         return list(remaining_after_ignores)[0] if len(remaining_after_ignores) == 1 else None
 
 
+# @TODO: Deprecate!
 @union
 @dataclass(frozen=True)
 class InjectDependenciesRequest(EngineAwareParameter, ABC):
@@ -2545,6 +2546,7 @@ class InjectedDependencies(DeduplicatedCollection[Address]):
 SF = TypeVar("SF", bound="SourcesField")
 
 
+# @TODO: Deprecate!
 @union
 @dataclass(frozen=True)
 class InferDependenciesRequest(Generic[SF], EngineAwareParameter):
@@ -2601,6 +2603,28 @@ class InferredDependencies:
 
 
 FS = TypeVar("FS", bound="FieldSet")
+
+
+@union
+@dataclass(frozen=True)
+# @TODO: "Augment" isn't great, "infer" is perfect, but...
+# @TODO: Batch it!
+class AugmentDependenciesRequest(Generic[FS], ABC):
+    """A request to augment dependencies by analyzing source files.
+
+    ...
+    """
+
+    field_set_type: ClassVar[Type[FS]]  # type: ignore[misc]
+
+    # @TODO: Frozen ordered set?
+    field_sets: FrozenOrderedSet[FS]
+
+
+@dataclass(frozen=True)
+class AugmentedDependencies:
+    includes: FrozenOrderedSet[Address]
+    excludes: FrozenOrderedSet[Address]
 
 
 @union

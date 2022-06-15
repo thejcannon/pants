@@ -1210,7 +1210,7 @@ async def resolve_dependencies(
     # include those dependencies because they should often be excluded from the result due to
     # being handled elsewhere in the calling code.
     special_cased = (
-        (await _get_special_cased_dependencies(tgt, subproject_roots))
+        await _get_special_cased_dependencies(tgt, subproject_roots)
         if request.include_special_cased_deps
         else ()
     )

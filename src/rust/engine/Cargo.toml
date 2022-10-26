@@ -116,7 +116,7 @@ either = "1.6"
 fnv = "1.0.5"
 fs = { path = "fs" }
 futures = "0.3"
-futures-core = "^0.3.0"
+futures-core = "^0.3.25"
 graph = { path = "graph" }
 grpc_util = { path = "grpc_util" }
 hashing = { path = "hashing" }

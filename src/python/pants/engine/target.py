@@ -2497,6 +2497,21 @@ class DependenciesRequest(EngineAwareParameter):
         return self.field.address.spec
 
 
+@frozen_after_init
+@dataclass(unsafe_hash=True)
+class BatchedDependenciesRequest(EngineAwareParameter):
+    fields: Tuple[Dependencies, ...]
+    include_special_cased_deps: bool
+
+    def __init__(self, fields: Iterable[Dependencies], include_special_cased_deps: bool = False):
+        self.fields = tuple(fields)
+        self.include_special_cased_deps = include_special_cased_deps
+
+
+class AddressesBatch(Collection[Addresses]):
+    pass
+
+
 @dataclass(frozen=True)
 class ExplicitlyProvidedDependencies:
     """The literal addresses from a BUILD file `dependencies` field.
@@ -2651,6 +2666,18 @@ class InferDependenciesRequest(Generic[FS], EngineAwareParameter):
     field_set: FS
 
 
+@union(in_scope_types=[EnvironmentName])
+@dataclass(frozen=True)
+class BatchedInferDependenciesRequest(Generic[FS], EngineAwareParameter):
+    """
+    I'm a docstring!
+    """
+
+    infer_from: ClassVar[Type[FS]]  # type: ignore[misc]
+
+    field_sets: Tuple[FS, ...]
+
+
 @frozen_after_init
 @dataclass(unsafe_hash=True)
 class InferredDependencies:
@@ -2666,6 +2693,10 @@ class InferredDependencies:
         """The result of inferring dependencies."""
         self.include = FrozenOrderedSet(sorted(include))
         self.exclude = FrozenOrderedSet(sorted(exclude))
+
+
+class InferredDepCollection(Collection[InferredDependencies]):
+    pass
 
 
 @union(in_scope_types=[EnvironmentName])

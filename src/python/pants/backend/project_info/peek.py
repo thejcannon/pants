@@ -25,6 +25,7 @@ from pants.engine.target import (
     UnexpandedTargets,
 )
 from pants.option.option_types import BoolOption
+from pants.util.collections import partition_sequentially
 
 
 class PeekSubsystem(Outputting, GoalSubsystem):
@@ -117,21 +118,35 @@ async def get_target_data(
             targets_with_sources.append(tgt)
 
     # NB: When determining dependencies, we replace target generators with their generated targets.
-    dep_addresses_per_target = await Get(
-        AddressesBatch,
-        BatchedDependenciesRequest(
-            (tgt.get(Dependencies) for tgt in sorted_targets), include_special_cased_deps=True
-        ),
+    BATCH_SIZE = 64
+    target_batches = list(
+        partition_sequentially(
+            sorted_targets,
+            key=lambda tgt: tgt.address.spec,
+            size_target=BATCH_SIZE,
+            size_max=4 * BATCH_SIZE,
+        )
     )
+    address_batches = await MultiGet(
+        Get(
+            AddressesBatch,
+            BatchedDependenciesRequest(
+                (tgt.get(Dependencies) for tgt in target_batch), include_special_cased_deps=True
+            ),
+        )
+        for target_batch in target_batches
+    )
+
     hydrated_sources_per_target = await MultiGet(
         Get(HydratedSources, HydrateSourcesRequest(tgt[SourcesField]))
         for tgt in targets_with_sources
     )
 
-    expanded_dependencies = [
-        tuple(dep.spec for dep in deps)
-        for tgt, deps in zip(sorted_targets, dep_addresses_per_target)
-    ]
+    expanded_dependencies_per_target = {
+        target: addresses
+        for target_batch, address_batch in zip(target_batches, address_batches)
+        for target, addresses in zip(target_batch, address_batch)
+    }
     expanded_sources_map = {
         tgt.address: hs.snapshot.files
         for tgt, hs in zip(targets_with_sources, hydrated_sources_per_target)
@@ -140,10 +155,10 @@ async def get_target_data(
     return TargetDatas(
         TargetData(
             tgt,
-            expanded_dependencies=expanded_deps,
+            expanded_dependencies=expanded_dependencies_per_target[tgt],
             expanded_sources=expanded_sources_map.get(tgt.address),
         )
-        for tgt, expanded_deps in zip(sorted_targets, expanded_dependencies)
+        for tgt in sorted_targets
     )
 
 

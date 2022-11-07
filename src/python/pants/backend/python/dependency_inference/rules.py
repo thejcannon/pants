@@ -371,7 +371,6 @@ async def infer_python_dependencies_via_source(
     python_infer_subsystem: PythonInferSubsystem,
     python_setup: PythonSetup,
 ) -> InferredDepCollection:
-    logger.error(f"Looking up {len(request.field_sets)}")
     if not python_infer_subsystem.imports and not python_infer_subsystem.assets:
         return InferredDepCollection([])
 

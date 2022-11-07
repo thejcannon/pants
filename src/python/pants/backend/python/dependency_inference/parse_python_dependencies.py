@@ -3,13 +3,14 @@
 
 import json
 from dataclasses import dataclass
+from typing import Tuple
 
 from pants.backend.python.target_types import PythonSourceField
 from pants.backend.python.util_rules.interpreter_constraints import InterpreterConstraints
 from pants.backend.python.util_rules.pex_environment import PythonExecutable
-from pants.core.util_rules.source_files import SourceFilesRequest
+from pants.core.util_rules.source_files import SourceFiles, SourceFilesRequest
 from pants.core.util_rules.stripped_source_files import StrippedSourceFiles
-from pants.engine.collection import DeduplicatedCollection
+from pants.engine.collection import Collection, DeduplicatedCollection
 from pants.engine.fs import CreateDigest, Digest, FileContent, MergeDigests
 from pants.engine.process import Process, ProcessResult
 from pants.engine.rules import Get, MultiGet, collect_rules, rule
@@ -45,13 +46,17 @@ class ParsedPythonDependencies:
 
 
 @dataclass(frozen=True)
-class ParsePythonDependenciesRequest:
-    source: PythonSourceField
+class BatchedParsePythonDependenciesRequest:
+    sources: Tuple[PythonSourceField, ...]
     interpreter_constraints: InterpreterConstraints
     string_imports: bool
     string_imports_min_dots: int
     assets: bool
     assets_min_slashes: int
+
+
+class BatchedParsedPythonDependencies(Collection[ParsedPythonDependencies]):
+    pass
 
 
 @dataclass(frozen=True)
@@ -69,18 +74,14 @@ async def parser_script() -> ParserScript:
 
 
 @rule
-async def parse_python_dependencies(
-    request: ParsePythonDependenciesRequest,
+async def batch_parse_dependencies(
+    request: BatchedParsePythonDependenciesRequest,
     parser_script: ParserScript,
-) -> ParsedPythonDependencies:
+) -> BatchedParsedPythonDependencies:
     python_interpreter, stripped_sources = await MultiGet(
         Get(PythonExecutable, InterpreterConstraints, request.interpreter_constraints),
-        Get(StrippedSourceFiles, SourceFilesRequest([request.source])),
+        Get(SourceFiles, SourceFilesRequest(request.sources)),
     )
-
-    # We operate on PythonSourceField, which should be one file.
-    assert len(stripped_sources.snapshot.files) == 1
-    file = stripped_sources.snapshot.files[0]
 
     input_digest = await Get(
         Digest, MergeDigests([parser_script.digest, stripped_sources.snapshot.digest])
@@ -91,10 +92,10 @@ async def parse_python_dependencies(
             argv=[
                 python_interpreter.path,
                 "./__parse_python_dependencies.py",
-                file,
+                *stripped_sources.snapshot.files,
             ],
             input_digest=input_digest,
-            description=f"Determine Python dependencies for {request.source.address}",
+            description="Determine Python dependencies in batch",
             env={
                 "STRING_IMPORTS": "y" if request.string_imports else "n",
                 "STRING_IMPORTS_MIN_DOTS": str(request.string_imports_min_dots),
@@ -109,11 +110,15 @@ async def parse_python_dependencies(
     process_output = process_result.stdout.decode("utf8") or "{}"
     output = json.loads(process_output)
 
-    return ParsedPythonDependencies(
-        imports=ParsedPythonImports(
-            (key, ParsedPythonImportInfo(**val)) for key, val in output.get("imports", {}).items()
-        ),
-        assets=ParsedPythonAssetPaths(output.get("assets", [])),
+    return BatchedParsedPythonDependencies(
+        ParsedPythonDependencies(
+            imports=ParsedPythonImports(
+                (key, ParsedPythonImportInfo(**val))
+                for key, val in output[source.file_path].get("imports", {}).items()
+            ),
+            assets=ParsedPythonAssetPaths(output[source.file_path].get("assets", [])),
+        )
+        for source in request.sources
     )
 
 

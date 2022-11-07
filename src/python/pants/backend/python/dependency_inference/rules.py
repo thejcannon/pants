@@ -21,6 +21,8 @@ from pants.backend.python.dependency_inference.module_mapper import (
     ResolveName,
 )
 from pants.backend.python.dependency_inference.parse_python_dependencies import (
+    BatchedParsePythonDependenciesRequest,
+    BatchedParsedPythonDependencies,
     ParsedPythonAssetPaths,
     ParsedPythonDependencies,
     ParsedPythonImports,
@@ -42,12 +44,14 @@ from pants.core.target_types import AllAssetTargets, AllAssetTargetsByPath, AllA
 from pants.core.util_rules import stripped_source_files
 from pants.engine.addresses import Address, Addresses
 from pants.engine.internals.graph import Owners, OwnersRequest
-from pants.engine.rules import Get, MultiGet, rule, rule_helper
+from pants.engine.rules import Get, MultiGet, SubsystemRule, rule, rule_helper
 from pants.engine.target import (
+    BatchedInferDependenciesRequest,
     DependenciesRequest,
     ExplicitlyProvidedDependencies,
     FieldSet,
     InferDependenciesRequest,
+    InferredDepCollection,
     InferredDependencies,
     Targets,
 )
@@ -216,6 +220,10 @@ class InferPythonImportDependencies(InferDependenciesRequest):
     infer_from = PythonImportDependenciesInferenceFieldSet
 
 
+class BatchInferPythonImportDependencies(BatchedInferDependenciesRequest):
+    infer_from = PythonImportDependenciesInferenceFieldSet
+
+
 def _get_inferred_asset_deps(
     address: Address,
     request_file_path: str,
@@ -359,23 +367,28 @@ async def _handle_unowned_imports(
         raise UnownedDependencyError(msg)
 
 
-@rule(desc="Inferring Python dependencies by analyzing source")
-async def infer_python_dependencies_via_source(
-    request: InferPythonImportDependencies,
+@rule(desc="Batch inferring Python dependencies by analyzing source")
+async def batch_infer_python_dependencies_via_source(
+    request: BatchInferPythonImportDependencies,
     python_infer_subsystem: PythonInferSubsystem,
     python_setup: PythonSetup,
-) -> InferredDependencies:
+) -> InferredDepCollection:
     if not python_infer_subsystem.imports and not python_infer_subsystem.assets:
-        return InferredDependencies([])
+        return InferredDepCollection([])
 
-    address = request.field_set.address
+    result = [set() for _ in request.field_sets]
+    all_unowned_imports: set[str] = set()
+
+    # @TODO: Likely needs to be partitioned by ICs/resolve
     interpreter_constraints = InterpreterConstraints.create_from_compatibility_fields(
-        [request.field_set.interpreter_constraints], python_setup
+        [fs.interpreter_constraints for fs in request.field_sets], python_setup
     )
-    parsed_dependencies = await Get(
-        ParsedPythonDependencies,
-        ParsePythonDependenciesRequest(
-            request.field_set.source,
+    resolve = request.field_sets[0].resolve.normalized_value(python_setup)
+
+    batched_parsed_dependencies = await Get(
+        BatchedParsedPythonDependencies,
+        BatchedParsePythonDependenciesRequest(
+            tuple(fs.source for fs in request.field_sets),
             interpreter_constraints,
             string_imports=python_infer_subsystem.string_imports,
             string_imports_min_dots=python_infer_subsystem.string_imports_min_dots,
@@ -383,55 +396,67 @@ async def infer_python_dependencies_via_source(
             assets_min_slashes=python_infer_subsystem.assets_min_slashes,
         ),
     )
-
-    inferred_deps: set[Address] = set()
-    unowned_imports: set[str] = set()
-    parsed_imports = parsed_dependencies.imports
-    parsed_assets = parsed_dependencies.assets
-    if not python_infer_subsystem.imports:
-        parsed_imports = ParsedPythonImports([])
-
-    explicitly_provided_deps = await Get(
-        ExplicitlyProvidedDependencies, DependenciesRequest(request.field_set.dependencies)
+    any_parsed_imports = any(parsed.imports for parsed in batched_parsed_dependencies)
+    all_parsed_imports = ParsedPythonImports(
+        item for parsed in batched_parsed_dependencies for item in parsed.imports.items()
     )
+    any_parsed_assets = any(parsed.imports for parsed in batched_parsed_dependencies)
 
-    resolve = request.field_set.resolve.normalized_value(python_setup)
-
-    if parsed_imports:
-        import_deps, unowned_imports = _get_imports_info(
-            address=address,
-            owners_per_import=await MultiGet(
-                Get(PythonModuleOwners, PythonModuleOwnersRequest(imported_module, resolve=resolve))
-                for imported_module in parsed_imports
-            ),
-            parsed_imports=parsed_imports,
-            explicitly_provided_deps=explicitly_provided_deps,
+    all_explicitly_provided_deps: ExplicitlyProvidedDependencies | None = None
+    if any_parsed_imports and python_infer_subsystem.imports:
+        all_explicitly_provided_deps = await MultiGet(
+            Get(ExplicitlyProvidedDependencies, DependenciesRequest(fs.dependencies))
+            for fs in request.field_sets
         )
-        inferred_deps.update(import_deps)
+        owners_per_import = await MultiGet(
+            Get(PythonModuleOwners, PythonModuleOwnersRequest(imported_module, resolve=resolve))
+            for imported_module in all_parsed_imports
+        )
+        for fs, parsed_deps, explicitly_provided_deps, inferred_deps in zip(
+            request.field_sets, batched_parsed_dependencies, all_explicitly_provided_deps, result
+        ):
+            import_deps, unowned_imports = _get_imports_info(
+                address=fs.address,
+                owners_per_import=owners_per_import,
+                parsed_imports=parsed_deps.imports,
+                explicitly_provided_deps=explicitly_provided_deps,
+            )
+            inferred_deps.update(import_deps)
+            all_unowned_imports.update(unowned_imports)
 
-    if parsed_assets:
+    if any_parsed_assets:
         all_asset_targets = await Get(AllAssetTargets, AllAssetTargetsRequest())
         assets_by_path = await Get(AllAssetTargetsByPath, AllAssetTargets, all_asset_targets)
-        inferred_deps.update(
-            _get_inferred_asset_deps(
-                address,
-                request.field_set.source.file_path,
-                assets_by_path,
-                parsed_assets,
-                explicitly_provided_deps,
+        if all_explicitly_provided_deps is None:
+            all_explicitly_provided_deps = await MultiGet(
+                Get(ExplicitlyProvidedDependencies, DependenciesRequest(fs.dependencies))
+                for fs in request.field_sets
             )
-        )
+        for fs, parsed_deps, explicitly_provided_deps, inferred_deps in zip(
+            request.field_sets, batched_parsed_dependencies, all_explicitly_provided_deps, result
+        ):
+            inferred_deps.update(
+                _get_inferred_asset_deps(
+                    fs.address,
+                    fs.source.file_path,
+                    assets_by_path,
+                    parsed_deps.imports,
+                    explicitly_provided_deps,
+                )
+            )
 
     _ = await _handle_unowned_imports(
-        address,
+        "",  # type: ignore
         python_infer_subsystem.unowned_dependency_behavior,
         python_setup,
-        unowned_imports,
-        parsed_imports,
+        all_unowned_imports,
+        all_parsed_imports,
         resolve=resolve,
     )
 
-    return InferredDependencies(sorted(inferred_deps))
+    return InferredDepCollection(
+        InferredDependencies(sorted(inferred_deps)) for inferred_deps in result
+    )
 
 
 @dataclass(frozen=True)
@@ -532,6 +557,7 @@ async def infer_python_conftest_dependencies(
 def import_rules():
     return [
         infer_python_dependencies_via_source,
+        batch_infer_python_dependencies_via_source,
         *pex.rules(),
         *parse_python_dependencies.rules(),
         *module_mapper.rules(),
@@ -539,7 +565,7 @@ def import_rules():
         *target_types.rules(),
         *PythonInferSubsystem.rules(),
         *PythonSetup.rules(),
-        UnionRule(InferDependenciesRequest, InferPythonImportDependencies),
+        UnionRule(BatchedInferDependenciesRequest, BatchInferPythonImportDependencies),
     ]
 
 

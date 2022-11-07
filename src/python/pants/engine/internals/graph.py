@@ -8,9 +8,10 @@ import itertools
 import json
 import logging
 import os.path
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import PurePath
-from typing import Iterable, Iterator, NamedTuple, Sequence, Type, cast
+from typing import DefaultDict, Iterable, Iterator, NamedTuple, Sequence, Set, Tuple, Type, cast
 
 from pants.base.deprecated import warn_or_error
 from pants.base.specs import AncestorGlobSpec, RawSpecsWithoutFileOwners, RecursiveGlobSpec
@@ -37,9 +38,12 @@ from pants.engine.internals.parametrize import (  # noqa: F401
 from pants.engine.internals.target_adaptor import TargetAdaptor, TargetAdaptorRequest
 from pants.engine.rules import Get, MultiGet, collect_rules, rule, rule_helper
 from pants.engine.target import (
+    AddressesBatch,
     AllTargets,
     AllTargetsRequest,
     AllUnexpandedTargets,
+    BatchedDependenciesRequest,
+    BatchedInferDependenciesRequest,
     CoarsenedTarget,
     CoarsenedTargets,
     CoarsenedTargetsRequest,
@@ -60,6 +64,7 @@ from pants.engine.target import (
     HydratedSources,
     HydrateSourcesRequest,
     InferDependenciesRequest,
+    InferredDepCollection,
     InferredDependencies,
     InvalidFieldException,
     MultipleSourcesField,
@@ -81,8 +86,6 @@ from pants.engine.target import (
     TransitiveTargetsRequest,
     UnexpandedTargets,
     UnrecognizedTargetTypeException,
-    ValidatedDependencies,
-    ValidateDependenciesRequest,
     WrappedTarget,
     WrappedTargetRequest,
     _generate_file_level_targets,
@@ -585,27 +588,20 @@ async def transitive_dependency_mapping(request: _DependencyMappingRequest) -> _
     dependency_mapping: dict[Address, tuple[Address, ...]] = {}
     while queued:
         direct_dependencies: tuple[Collection[Target], ...]
+        address_batch = await Get(
+            AddressesBatch,
+            BatchedDependenciesRequest(
+                (tgt.get(Dependencies) for tgt in queued),
+                include_special_cased_deps=request.tt_request.include_special_cased_deps,
+            ),
+        )
         if request.expanded_targets:
             direct_dependencies = await MultiGet(
-                Get(
-                    Targets,
-                    DependenciesRequest(
-                        tgt.get(Dependencies),
-                        include_special_cased_deps=request.tt_request.include_special_cased_deps,
-                    ),
-                )
-                for tgt in queued
+                Get(Targets, Addresses, addresses) for addresses in address_batch
             )
         else:
             direct_dependencies = await MultiGet(
-                Get(
-                    UnexpandedTargets,
-                    DependenciesRequest(
-                        tgt.get(Dependencies),
-                        include_special_cased_deps=request.tt_request.include_special_cased_deps,
-                    ),
-                )
-                for tgt in queued
+                Get(UnexpandedTargets, Addresses, addresses) for addresses in address_batch
             )
 
         dependency_mapping.update(
@@ -1166,155 +1162,233 @@ async def _fill_parameters(
     )
 
 
+@dataclass(frozen=True)
+class InferDepsSingleReq:
+    inference_request_types: FrozenOrderedSet[Type[InferDependenciesRequest]]
+    tgt: Target
+
+
+@rule
+async def infer_deps_single(request: InferDepsSingleReq) -> InferredDepCollection:
+    relevant_inference_request_types = [
+        inference_request_type
+        for inference_request_type in request.inference_request_types
+        if inference_request_type.infer_from.is_applicable(request.tgt)
+    ]
+    col = await MultiGet(
+        Get(
+            InferredDependencies,
+            InferDependenciesRequest,
+            inference_request_type(inference_request_type.infer_from.create(request.tgt)),
+        )
+        for inference_request_type in relevant_inference_request_types
+    )
+    return InferredDepCollection(col)
+
+
+@dataclass(frozen=True)
+class ExplicitSpecialCasedDepsRequest:
+    fields: Tuple[SpecialCasedDependencies]
+    tgt: Target
+
+
+@rule
+async def special_cased(
+    request: ExplicitSpecialCasedDepsRequest,
+    subproject_roots: SubprojectRoots,
+) -> Addresses:
+    # We can't use the normal `Get(Addresses, UnparsedAddressInputs)` due to a graph cycle.
+    special_caseds = await MultiGet(
+        Get(
+            Address,
+            AddressInput,
+            AddressInput.parse(
+                addr,
+                relative_to=request.tgt.address.spec_path,
+                subproject_roots=subproject_roots,
+                description_of_origin=(
+                    f"the `{special_cased_field.alias}` field from the target {request.tgt.address}"
+                ),
+            ),
+        )
+        for special_cased_field in request.fields
+        for addr in special_cased_field.to_unparsed_address_inputs().values
+    )
+    return Addresses(addr for addr in special_caseds)
+
+
 @rule(desc="Resolve direct dependencies of target", _masked_types=[EnvironmentName])
 async def resolve_dependencies(
-    request: DependenciesRequest,
+    request: BatchedDependenciesRequest,
     target_types_to_generate_requests: TargetTypesToGenerateTargetsRequests,
     union_membership: UnionMembership,
     subproject_roots: SubprojectRoots,
     field_defaults: FieldDefaults,
     local_environment_name: ChosenLocalEnvironmentName,
-) -> Addresses:
-    environment_name = local_environment_name.val
-    wrapped_tgt, explicitly_provided = await MultiGet(
-        Get(
-            WrappedTarget,
-            # It's only possible to find dependencies for a target that we already know exists.
-            WrappedTargetRequest(request.field.address, description_of_origin="<infallible>"),
-        ),
-        Get(ExplicitlyProvidedDependencies, DependenciesRequest, request),
-    )
-    tgt = wrapped_tgt.target
+) -> AddressesBatch:
+    result: DefaultDict[Dependencies, Tuple[Set[Address], Set[Address]]] = defaultdict(
+        lambda: (set(), set())
+    )  # maps field to (include Addresses, exclude Addresses)
+    tgts = [
+        tgt.target
+        for tgt in await MultiGet(
+            Get(
+                WrappedTarget,
+                # It's only possible to find dependencies for a target that we already know exists.
+                WrappedTargetRequest(field.address, description_of_origin="<infallible>"),
+            )
+            for field in request.fields
+        )
+    ]
 
     # Infer any dependencies (based on `SourcesField` field).
     inference_request_types = cast(
-        "Sequence[Type[InferDependenciesRequest]]", union_membership.get(InferDependenciesRequest)
+        "FrozenOrderedSet[Type[InferDependenciesRequest]]",
+        union_membership.get(InferDependenciesRequest),
     )
-    inferred: tuple[InferredDependencies, ...] = ()
     if inference_request_types:
-        relevant_inference_request_types = [
-            inference_request_type
-            for inference_request_type in inference_request_types
-            if inference_request_type.infer_from.is_applicable(tgt)
-        ]
-        inferred = await MultiGet(
-            Get(
-                InferredDependencies,
-                {
-                    inference_request_type(
-                        inference_request_type.infer_from.create(tgt)
-                    ): InferDependenciesRequest,
-                    environment_name: EnvironmentName,
-                },
-            )
-            for inference_request_type in relevant_inference_request_types
+        inferreds = await MultiGet(
+            Get(InferredDepCollection, InferDepsSingleReq(inference_request_types, tgt))
+            for tgt in tgts
         )
+        for field, inferred_deps in zip(request.fields, inferreds):
+            result[field][0].update(inferred.include for inferred in inferred_deps)
+            result[field][1].update(inferred.exclude for inferred in inferred_deps)
+
+    batched_inference_request_types = cast(
+        "FrozenOrderedSet[Type[BatchedInferDependenciesRequest]]",
+        union_membership.get(BatchedInferDependenciesRequest),
+    )
+    if batched_inference_request_types:
+        inferreds = await MultiGet(
+            Get(
+                InferredDepCollection,
+                BatchedInferDependenciesRequest,
+                req_type(
+                    tuple(
+                        req_type.infer_from.create(tgt)
+                        for tgt in tgts
+                        if req_type.infer_from.is_applicable(tgt)
+                    )
+                ),
+            )
+            for req_type in batched_inference_request_types
+        )
+        for req_type, inferred_deps in zip(batched_inference_request_types, inferreds):
+            applicable_tgts = [tgt for tgt in tgts if req_type.infer_from.is_applicable(tgt)]
+            for tgt, deps in zip(applicable_tgts, inferred_deps):
+                result[tgt[Dependencies]][0].update(inferred.include for inferred in deps)
+                result[tgt[Dependencies]][1].update(inferred.exclude for inferred in deps)
 
     # If it's a target generator, inject dependencies on all of its generated targets.
-    generated_addresses: tuple[Address, ...] = ()
-    if target_types_to_generate_requests.is_generator(tgt) and not tgt.address.is_generated_target:
-        parametrizations = await Get(
-            _TargetParametrizations,
-            {
+    generator_tgts = [
+        tgt
+        for tgt in tgts
+        if target_types_to_generate_requests.is_generator(tgt)
+        and not tgt.address.is_generated_target
+    ]
+    if generator_tgts:
+        all_parametrizations = await MultiGet(
+            Get(
+                _TargetParametrizations,
                 _TargetParametrizationsRequest(
                     tgt.address.maybe_convert_to_target_generator(),
                     description_of_origin=(
                         f"the target generator {tgt.address.maybe_convert_to_target_generator()}"
                     ),
-                ): _TargetParametrizationsRequest,
-                environment_name: EnvironmentName,
-            },
-        )
-        generated_addresses = tuple(parametrizations.generated_for(tgt.address).keys())
-
-    # See whether any explicitly provided dependencies are parametrized, but with partial/no
-    # parameters. If so, fill them in.
-    explicitly_provided_includes: Iterable[Address] = explicitly_provided.includes
-    if explicitly_provided_includes:
-        explicitly_provided_includes = await _fill_parameters(
-            request.field.alias,
-            tgt,
-            explicitly_provided_includes,
-            target_types_to_generate_requests,
-            field_defaults,
-            local_environment_name,
-        )
-    explicitly_provided_ignores: FrozenOrderedSet[Address] = explicitly_provided.ignores
-    if explicitly_provided_ignores:
-        explicitly_provided_ignores = FrozenOrderedSet(
-            await _fill_parameters(
-                request.field.alias,
-                tgt,
-                tuple(explicitly_provided_ignores),
-                target_types_to_generate_requests,
-                field_defaults,
-                local_environment_name,
+                ),
             )
+            for tgt in generator_tgts
         )
+        for tgt, parametrizations in zip(generator_tgts, all_parametrizations):
+            result[field][0].update(parametrizations.generated_for(tgt.address).keys())
+
+    # If the target is parametrized, see whether any explicitly provided dependencies are also
+    # parametrized, but with partial/no parameters. If so, fill them in.
+    explicitly_provided_deps = await MultiGet(
+        Get(ExplicitlyProvidedDependencies, DependenciesRequest(field)) for field in request.fields
+    )
+    for field, tgt, explicitly_provided in zip(request.fields, tgts, explicitly_provided_deps):
+        explicitly_provided_includes: Iterable[Address] = explicitly_provided.includes
+        if field.address.is_parametrized and explicitly_provided_includes:
+            explicit_dependency_parametrizations = await MultiGet(
+                Get(
+                    _TargetParametrizations,
+                    _TargetParametrizationsRequest(
+                        address.maybe_convert_to_target_generator(),
+                        description_of_origin=(
+                            f"the `{field.alias}` field of the target {tgt.address}"
+                        ),
+                    ),
+                )
+                for address in explicitly_provided_includes
+            )
+
+            explicitly_provided_includes = [
+                parametrizations.get_subset(address, tgt).address
+                for address, parametrizations in zip(
+                    explicitly_provided_includes, explicit_dependency_parametrizations
+                )
+            ]
+
+        result[field][0].update(explicitly_provided_includes)
 
     # If the target has `SpecialCasedDependencies`, such as the `archive` target having
     # `files` and `packages` fields, then we possibly include those too. We don't want to always
     # include those dependencies because they should often be excluded from the result due to
     # being handled elsewhere in the calling code.
-    special_cased: tuple[Address, ...] = ()
     if request.include_special_cased_deps:
-        # Unlike normal, we don't use `tgt.get()` because there may be >1 subclass of
-        # SpecialCasedDependencies.
-        special_cased_fields = tuple(
-            field
-            for field in tgt.field_values.values()
-            if isinstance(field, SpecialCasedDependencies)
-        )
-        # We can't use the normal `Get(Addresses, UnparsedAddressInputs)` due to a graph cycle.
-        special_cased = await MultiGet(
-            Get(
-                Address,
-                AddressInput,
-                AddressInput.parse(
-                    addr,
-                    relative_to=tgt.address.spec_path,
-                    subproject_roots=subproject_roots,
-                    description_of_origin=(
-                        f"the `{special_cased_field.alias}` field from the target {tgt.address}"
-                    ),
-                ),
+        tgts_to_special_fields = {
+            # Unlike normal, we don't use `tgt.get()` because there may be >1 subclass of
+            # SpecialCasedDependencies.
+            tgt: tuple(
+                field
+                for field in tgt.field_values.values()
+                if isinstance(field, SpecialCasedDependencies)
             )
-            for special_cased_field in special_cased_fields
-            for addr in special_cased_field.to_unparsed_address_inputs().values
+            for tgt in tgts
+        }
+        tgts_to_special_fields = {
+            tgt: fields for tgt, fields in tgts_to_special_fields.items() if fields
+        }
+
+        special_caseds = await MultiGet(
+            Get(Addresses, ExplicitSpecialCasedDepsRequest(fields, tgt))
+            for tgt, fields in tgts_to_special_fields.items()
         )
 
-    excluded = explicitly_provided_ignores.union(
-        *itertools.chain(deps.exclude for deps in inferred)
-    )
-    result = Addresses(
-        sorted(
-            {
-                addr
-                for addr in (
-                    *generated_addresses,
-                    *explicitly_provided_includes,
-                    *itertools.chain.from_iterable(deps.include for deps in inferred),
-                    *special_cased,
-                )
-                if addr not in excluded
-            }
-        )
+        for special_cased, tgt in zip(special_caseds, tgts_to_special_fields.keys()):
+            result[tgt[Dependencies]][0].update(special_cased)
+
+    includes = [
+        addr
+        for expl_deps, field in zip(explicitly_provided_deps, request.fields)
+        for addr in expl_deps.includes.union(result[field][0])
+    ]
+    ignores = [
+        addr
+        for expl_deps, field in zip(explicitly_provided_deps, request.fields)
+        for addr in expl_deps.ignores.union(result[field][1])
+    ]
+    batched_result = AddressesBatch(
+        [
+            Addresses(sorted(addr for addr in yes if addr not in no))
+            for yes, no in zip(includes, ignores)
+        ]
     )
 
     # Validate dependencies.
-    _ = await MultiGet(
-        Get(
-            ValidatedDependencies,
-            {
-                vd_request_type(vd_request_type.field_set_type.create(tgt), result): ValidateDependenciesRequest,  # type: ignore[misc]
-                environment_name: EnvironmentName,
-            },
-        )
-        for vd_request_type in union_membership.get(ValidateDependenciesRequest)
-        if vd_request_type.field_set_type.is_applicable(tgt)  # type: ignore[misc]
-    )
+    # _ = await MultiGet(
+    #    Get(
+    #        ValidatedDependencies,
+    #        ValidateDependenciesRequest,
+    #        vd_request_type(vd_request_type.field_set_type.create(tgt), result),  # type: ignore[misc]
+    #    )
+    #    for vd_request_type in union_membership.get(ValidateDependenciesRequest)
+    #    if vd_request_type.field_set_type.is_applicable(tgt)  # type: ignore[misc]
+    # )
 
-    return result
+    return batched_result
 
 
 @rule(desc="Resolve addresses")

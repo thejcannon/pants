@@ -178,7 +178,7 @@ class AstVisitor(ast.NodeVisitor):
             self.maybe_add_string_dependency(node, node.value)
 
 
-def main(filename):
+def _parse_file(filename):
     with open(filename, "rb") as f:
         content = f.read()
     try:
@@ -189,10 +189,6 @@ def main(filename):
     package_parts = os.path.dirname(filename).split(os.path.sep)
     visitor = AstVisitor(package_parts, content)
     visitor.visit(tree)
-
-    # We have to be careful to set the encoding explicitly and write raw bytes ourselves.
-    # See below for where we explicitly decode.
-    buffer = sys.stdout if sys.version_info[0:2] == (2, 7) else sys.stdout.buffer
 
     # N.B. Start with weak and `update` with definitive so definite "wins"
     imports_result = {
@@ -206,15 +202,21 @@ def main(filename):
         }
     )
 
+    return {
+        "imports": imports_result,
+        "assets": sorted(visitor.assets),
+    }
+
+
+def main(filenames):
+    # We have to be careful to set the encoding explicitly and write raw bytes ourselves.
+    # See below for where we explicitly decode.
+    buffer = sys.stdout if sys.version_info[0:2] == (2, 7) else sys.stdout.buffer
+
     buffer.write(
-        json.dumps(
-            {
-                "imports": imports_result,
-                "assets": sorted(visitor.assets),
-            }
-        ).encode("utf8")
+        json.dumps({filename: _parse_file(filename) for filename in filenames}).encode("utf8")
     )
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1:])

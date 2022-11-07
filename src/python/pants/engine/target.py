@@ -2666,7 +2666,7 @@ class InferDependenciesRequest(Generic[FS], EngineAwareParameter):
     field_set: FS
 
 
-@union
+@union(in_scope_types=[EnvironmentName])
 @dataclass(frozen=True)
 class BatchedInferDependenciesRequest(Generic[FS], EngineAwareParameter):
     """

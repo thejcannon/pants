@@ -595,14 +595,12 @@ async def transitive_dependency_mapping(request: _DependencyMappingRequest) -> _
                 include_special_cased_deps=request.tt_request.include_special_cased_deps,
             ),
         )
-        if request.expanded_targets:
-            direct_dependencies = await MultiGet(
-                Get(Targets, Addresses, addresses) for addresses in address_batch
-            )
-        else:
-            direct_dependencies = await MultiGet(
-                Get(UnexpandedTargets, Addresses, addresses) for addresses in address_batch
-            )
+        direct_dependencies = await MultiGet(
+            Get(Targets, Addresses, addresses)
+            if request.expanded_targets
+            else Get(UnexpandedTargets, Addresses, addresses)
+            for addresses in address_batch
+        )
 
         dependency_mapping.update(
             zip(
@@ -1169,7 +1167,11 @@ class InferDepsSingleReq:
 
 
 @rule
-async def infer_deps_single(request: InferDepsSingleReq) -> InferredDepCollection:
+async def infer_deps_single(
+    request: InferDepsSingleReq,
+    local_environment_name: ChosenLocalEnvironmentName,
+) -> InferredDepCollection:
+    environment_name = local_environment_name.val
     relevant_inference_request_types = [
         inference_request_type
         for inference_request_type in request.inference_request_types
@@ -1178,8 +1180,12 @@ async def infer_deps_single(request: InferDepsSingleReq) -> InferredDepCollectio
     col = await MultiGet(
         Get(
             InferredDependencies,
-            InferDependenciesRequest,
-            inference_request_type(inference_request_type.infer_from.create(request.tgt)),
+            {
+                inference_request_type(
+                    inference_request_type.infer_from.create(request.tgt)
+                ): InferDependenciesRequest,
+                environment_name: EnvironmentName,
+            },
         )
         for inference_request_type in relevant_inference_request_types
     )
@@ -1226,6 +1232,7 @@ async def resolve_dependencies(
     field_defaults: FieldDefaults,
     local_environment_name: ChosenLocalEnvironmentName,
 ) -> AddressesBatch:
+    environment_name = local_environment_name.val
     result: DefaultDict[Dependencies, Tuple[Set[Address], Set[Address]]] = defaultdict(
         lambda: (set(), set())
     )  # maps field to (include Addresses, exclude Addresses)
@@ -1263,14 +1270,16 @@ async def resolve_dependencies(
         inferreds = await MultiGet(
             Get(
                 InferredDepCollection,
-                BatchedInferDependenciesRequest,
-                req_type(
-                    tuple(
-                        req_type.infer_from.create(tgt)
-                        for tgt in tgts
-                        if req_type.infer_from.is_applicable(tgt)
-                    )
-                ),
+                {
+                    req_type(
+                        tuple(
+                            req_type.infer_from.create(tgt)
+                            for tgt in tgts
+                            if req_type.infer_from.is_applicable(tgt)
+                        )
+                    ): BatchedInferDependenciesRequest,
+                    environment_name: EnvironmentName,
+                },
             )
             for req_type in batched_inference_request_types
         )

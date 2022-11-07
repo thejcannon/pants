@@ -74,7 +74,7 @@ async def parser_script() -> ParserScript:
 
 
 @rule
-async def batch_parse_dependencies(
+async def parse_python_dependencies(
     request: BatchedParsePythonDependenciesRequest,
     parser_script: ParserScript,
 ) -> BatchedParsedPythonDependencies:

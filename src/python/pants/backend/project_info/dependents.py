@@ -15,7 +15,6 @@ from pants.engine.target import (
     AllUnexpandedTargets,
     BatchedDependenciesRequest,
     Dependencies,
-    DependenciesRequest,
 )
 from pants.option.option_types import BoolOption
 from pants.util.frozendict import FrozenDict
@@ -29,7 +28,7 @@ class AddressToDependents:
     mapping: FrozenDict[Address, FrozenOrderedSet[Address]]
 
 
-@rule(desc="Map all targets to their dependees", level=LogLevel.DEBUG)
+@rule(desc="Map all targets to their dependents", level=LogLevel.DEBUG)
 async def map_addresses_to_dependents(all_targets: AllUnexpandedTargets) -> AddressToDependents:
     dependencies_per_target = await MultiGet(
         Get(

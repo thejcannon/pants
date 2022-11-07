@@ -367,8 +367,8 @@ async def _handle_unowned_imports(
         raise UnownedDependencyError(msg)
 
 
-@rule(desc="Batch inferring Python dependencies by analyzing source")
-async def batch_infer_python_dependencies_via_source(
+@rule(desc="Inferring Python dependencies by analyzing source")
+async def infer_python_dependencies_via_source(
     request: BatchInferPythonImportDependencies,
     python_infer_subsystem: PythonInferSubsystem,
     python_setup: PythonSetup,

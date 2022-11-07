@@ -24,9 +24,7 @@ from pants.backend.python.dependency_inference.parse_python_dependencies import 
     BatchedParsePythonDependenciesRequest,
     BatchedParsedPythonDependencies,
     ParsedPythonAssetPaths,
-    ParsedPythonDependencies,
     ParsedPythonImports,
-    ParsePythonDependenciesRequest,
 )
 from pants.backend.python.subsystems.setup import PythonSetup
 from pants.backend.python.target_types import (
@@ -557,7 +555,6 @@ async def infer_python_conftest_dependencies(
 def import_rules():
     return [
         infer_python_dependencies_via_source,
-        batch_infer_python_dependencies_via_source,
         *pex.rules(),
         *parse_python_dependencies.rules(),
         *module_mapper.rules(),

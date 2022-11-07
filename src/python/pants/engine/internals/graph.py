@@ -1228,7 +1228,6 @@ async def resolve_dependencies(
     request: BatchedDependenciesRequest,
     target_types_to_generate_requests: TargetTypesToGenerateTargetsRequests,
     union_membership: UnionMembership,
-    subproject_roots: SubprojectRoots,
     field_defaults: FieldDefaults,
     local_environment_name: ChosenLocalEnvironmentName,
 ) -> AddressesBatch:
@@ -1248,6 +1247,8 @@ async def resolve_dependencies(
         )
     ]
 
+    # ===== Non-batched inference =====
+
     # Infer any dependencies (based on `SourcesField` field).
     inference_request_types = cast(
         "FrozenOrderedSet[Type[InferDependenciesRequest]]",
@@ -1261,6 +1262,8 @@ async def resolve_dependencies(
         for field, inferred_deps in zip(request.fields, inferreds):
             result[field][0].update(inferred.include for inferred in inferred_deps)
             result[field][1].update(inferred.exclude for inferred in inferred_deps)
+
+    # ===== Batched inference =====
 
     batched_inference_request_types = cast(
         "FrozenOrderedSet[Type[BatchedInferDependenciesRequest]]",
@@ -1289,6 +1292,8 @@ async def resolve_dependencies(
                 result[tgt[Dependencies]][0].update(inferred.include for inferred in deps)
                 result[tgt[Dependencies]][1].update(inferred.exclude for inferred in deps)
 
+    # ===== Generated Targets =====
+
     # If it's a target generator, inject dependencies on all of its generated targets.
     generator_tgts = [
         tgt
@@ -1300,17 +1305,22 @@ async def resolve_dependencies(
         all_parametrizations = await MultiGet(
             Get(
                 _TargetParametrizations,
-                _TargetParametrizationsRequest(
-                    tgt.address.maybe_convert_to_target_generator(),
-                    description_of_origin=(
-                        f"the target generator {tgt.address.maybe_convert_to_target_generator()}"
-                    ),
-                ),
+                {
+                    _TargetParametrizationsRequest(
+                        tgt.address.maybe_convert_to_target_generator(),
+                        description_of_origin=(
+                            f"the target generator {tgt.address.maybe_convert_to_target_generator()}"
+                        ),
+                    ): _TargetParametrizationsRequest,
+                    environment_name: EnvironmentName,
+                },
             )
             for tgt in generator_tgts
         )
         for tgt, parametrizations in zip(generator_tgts, all_parametrizations):
             result[field][0].update(parametrizations.generated_for(tgt.address).keys())
+
+    # ===== Parameterized Explicit Deps =====
 
     # If the target is parametrized, see whether any explicitly provided dependencies are also
     # parametrized, but with partial/no parameters. If so, fill them in.
@@ -1318,29 +1328,31 @@ async def resolve_dependencies(
         Get(ExplicitlyProvidedDependencies, DependenciesRequest(field)) for field in request.fields
     )
     for field, tgt, explicitly_provided in zip(request.fields, tgts, explicitly_provided_deps):
-        explicitly_provided_includes: Iterable[Address] = explicitly_provided.includes
-        if field.address.is_parametrized and explicitly_provided_includes:
-            explicit_dependency_parametrizations = await MultiGet(
-                Get(
-                    _TargetParametrizations,
-                    _TargetParametrizationsRequest(
-                        address.maybe_convert_to_target_generator(),
-                        description_of_origin=(
-                            f"the `{field.alias}` field of the target {tgt.address}"
-                        ),
-                    ),
+        if explicitly_provided.includes:
+            result[field][0].update(
+                await _fill_parameters(
+                    request.field.alias,
+                    tgt,
+                    explicitly_provided.includes,
+                    target_types_to_generate_requests,
+                    field_defaults,
+                    local_environment_name,
                 )
-                for address in explicitly_provided_includes
             )
 
-            explicitly_provided_includes = [
-                parametrizations.get_subset(address, tgt).address
-                for address, parametrizations in zip(
-                    explicitly_provided_includes, explicit_dependency_parametrizations
+        if explicitly_provided.ignores:
+            result[field][1].update(
+                await _fill_parameters(
+                    request.field.alias,
+                    tgt,
+                    tuple(explicitly_provided.ignores),
+                    target_types_to_generate_requests,
+                    field_defaults,
+                    local_environment_name,
                 )
-            ]
+            )
 
-        result[field][0].update(explicitly_provided_includes)
+    # ===== Special Cased =====
 
     # If the target has `SpecialCasedDependencies`, such as the `archive` target having
     # `files` and `packages` fields, then we possibly include those too. We don't want to always
@@ -1369,6 +1381,8 @@ async def resolve_dependencies(
         for special_cased, tgt in zip(special_caseds, tgts_to_special_fields.keys()):
             result[tgt[Dependencies]][0].update(special_cased)
 
+    # ===== Put it all together =====
+
     includes = [
         addr
         for expl_deps, field in zip(explicitly_provided_deps, request.fields)
@@ -1388,13 +1402,15 @@ async def resolve_dependencies(
 
     # Validate dependencies.
     # _ = await MultiGet(
-    #    Get(
-    #        ValidatedDependencies,
-    #        ValidateDependenciesRequest,
-    #        vd_request_type(vd_request_type.field_set_type.create(tgt), result),  # type: ignore[misc]
-    #    )
-    #    for vd_request_type in union_membership.get(ValidateDependenciesRequest)
-    #    if vd_request_type.field_set_type.is_applicable(tgt)  # type: ignore[misc]
+    #     Get(
+    #         ValidatedDependencies,
+    #         {
+    #             vd_request_type(vd_request_type.field_set_type.create(tgt), result): ValidateDependenciesRequest,  # type: ignore[misc]
+    #             environment_name: EnvironmentName,
+    #         },
+    #     )
+    #     for vd_request_type in union_membership.get(ValidateDependenciesRequest)
+    #     if vd_request_type.field_set_type.is_applicable(tgt)  # type: ignore[misc]
     # )
 
     return batched_result

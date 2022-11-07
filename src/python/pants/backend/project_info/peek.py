@@ -13,6 +13,8 @@ from pants.engine.console import Console
 from pants.engine.goal import Goal, GoalSubsystem, Outputting
 from pants.engine.rules import Get, MultiGet, collect_rules, goal_rule, rule
 from pants.engine.target import (
+    AddressesBatch,
+    BatchedDependenciesRequest,
     Dependencies,
     DependenciesRequest,
     HydratedSources,
@@ -115,12 +117,11 @@ async def get_target_data(
             targets_with_sources.append(tgt)
 
     # NB: When determining dependencies, we replace target generators with their generated targets.
-    dependencies_per_target = await MultiGet(
-        Get(
-            Targets,
-            DependenciesRequest(tgt.get(Dependencies), include_special_cased_deps=True),
-        )
-        for tgt in sorted_targets
+    dep_addresses_per_target = await Get(
+        AddressesBatch,
+        BatchedDependenciesRequest(
+            (tgt.get(Dependencies) for tgt in sorted_targets), include_special_cased_deps=True
+        ),
     )
     hydrated_sources_per_target = await MultiGet(
         Get(HydratedSources, HydrateSourcesRequest(tgt[SourcesField]))
@@ -128,8 +129,8 @@ async def get_target_data(
     )
 
     expanded_dependencies = [
-        tuple(dep.address.spec for dep in deps)
-        for tgt, deps in zip(sorted_targets, dependencies_per_target)
+        tuple(dep.spec for dep in deps)
+        for tgt, deps in zip(sorted_targets, dep_addresses_per_target)
     ]
     expanded_sources_map = {
         tgt.address: hs.snapshot.files

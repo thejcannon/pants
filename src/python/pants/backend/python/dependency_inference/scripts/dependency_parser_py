@@ -184,7 +184,10 @@ def _parse_file(filename):
     try:
         tree = ast.parse(content, filename=filename)
     except SyntaxError:
-        return
+        return {
+            "imports": [],
+            "assets": [],
+        }
 
     package_parts = os.path.dirname(filename).split(os.path.sep)
     visitor = AstVisitor(package_parts, content)

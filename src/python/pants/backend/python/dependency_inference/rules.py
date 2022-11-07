@@ -371,6 +371,7 @@ async def infer_python_dependencies_via_source(
     python_infer_subsystem: PythonInferSubsystem,
     python_setup: PythonSetup,
 ) -> InferredDepCollection:
+    logger.error(f"Looking up {len(request.field_sets)}")
     if not python_infer_subsystem.imports and not python_infer_subsystem.assets:
         return InferredDepCollection([])
 
@@ -406,16 +407,17 @@ async def infer_python_dependencies_via_source(
             Get(ExplicitlyProvidedDependencies, DependenciesRequest(fs.dependencies))
             for fs in request.field_sets
         )
-        owners_per_import = await MultiGet(
+        all_mod_owners = await MultiGet(
             Get(PythonModuleOwners, PythonModuleOwnersRequest(imported_module, resolve=resolve))
             for imported_module in all_parsed_imports
         )
+        owners_per_import = dict(zip(all_parsed_imports, all_mod_owners))
         for fs, parsed_deps, explicitly_provided_deps, inferred_deps in zip(
             request.field_sets, batched_parsed_dependencies, all_explicitly_provided_deps, result
         ):
             import_deps, unowned_imports = _get_imports_info(
                 address=fs.address,
-                owners_per_import=owners_per_import,
+                owners_per_import=[owners_per_import[imp] for imp in parsed_deps.imports],
                 parsed_imports=parsed_deps.imports,
                 explicitly_provided_deps=explicitly_provided_deps,
             )

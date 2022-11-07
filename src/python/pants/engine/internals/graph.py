@@ -1281,27 +1281,30 @@ async def batch_resolve_dependencies(
         union_membership.get(BatchedInferDependenciesRequest),
     )
     if batched_inference_request_types:
+        req_type_to_tgts = {
+            req_type: tuple(tgt for tgt in tgts if req_type.infer_from.is_applicable(tgt))
+            for req_type in batched_inference_request_types
+        }
+        req_type_to_tgts = {
+            req_type: targets for req_type, targets in req_type_to_tgts.items() if targets
+        }
+
         inferreds = await MultiGet(
             Get(
                 InferredDepCollection,
                 {
                     req_type(
-                        tuple(
-                            req_type.infer_from.create(tgt)
-                            for tgt in tgts
-                            if req_type.infer_from.is_applicable(tgt)
-                        )
+                        tuple(req_type.infer_from.create(tgt) for tgt in targets)
                     ): BatchedInferDependenciesRequest,
                     environment_name: EnvironmentName,
                 },
             )
-            for req_type in batched_inference_request_types
+            for req_type, targets in req_type_to_tgts.items()
         )
-        for req_type, inferred_deps in zip(batched_inference_request_types, inferreds):
-            applicable_tgts = [tgt for tgt in tgts if req_type.infer_from.is_applicable(tgt)]
-            for tgt, deps in zip(applicable_tgts, inferred_deps):
-                result[tgt[Dependencies]][0].update(*(inferred.include for inferred in deps))
-                result[tgt[Dependencies]][1].update(*(inferred.exclude for inferred in deps))
+        for targets, inferred_deps in zip(req_type_to_tgts.values(), inferreds):
+            for tgt, deps in zip(targets, inferred_deps):
+                result[tgt[Dependencies]][0].update(deps.include)
+                result[tgt[Dependencies]][1].update(deps.exclude)
 
     # ===== Generated Targets =====
 

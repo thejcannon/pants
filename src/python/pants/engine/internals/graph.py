@@ -1224,7 +1224,18 @@ async def special_cased(
 
 
 @rule(desc="Resolve direct dependencies of target", _masked_types=[EnvironmentName])
-async def resolve_dependencies(
+async def resolve_dependencies(request: DependenciesRequest) -> Addresses:
+    addresses_batch = await Get(
+        AddressesBatch,
+        BatchedDependenciesRequest(
+            (request.field,), include_special_cased_deps=request.include_special_cased_deps
+        ),
+    )
+    return addresses_batch[0]
+
+
+@rule(desc="Resolve direct dependencies of target", _masked_types=[EnvironmentName])
+async def batch_resolve_dependencies(
     request: BatchedDependenciesRequest,
     target_types_to_generate_requests: TargetTypesToGenerateTargetsRequests,
     union_membership: UnionMembership,
@@ -1232,9 +1243,9 @@ async def resolve_dependencies(
     local_environment_name: ChosenLocalEnvironmentName,
 ) -> AddressesBatch:
     environment_name = local_environment_name.val
-    result: DefaultDict[Dependencies, Tuple[Set[Address], Set[Address]]] = defaultdict(
-        lambda: (set(), set())
-    )  # maps field to (include Addresses, exclude Addresses)
+    result = {
+        field: (set(), set()) for field in request.fields
+    }  # maps field to (include Addresses, exclude Addresses)
     tgts = [
         tgt.target
         for tgt in await MultiGet(
@@ -1260,8 +1271,8 @@ async def resolve_dependencies(
             for tgt in tgts
         )
         for field, inferred_deps in zip(request.fields, inferreds):
-            result[field][0].update(inferred.include for inferred in inferred_deps)
-            result[field][1].update(inferred.exclude for inferred in inferred_deps)
+            result[field][0].update(*(inferred.include for inferred in inferred_deps))
+            result[field][1].update(*(inferred.exclude for inferred in inferred_deps))
 
     # ===== Batched inference =====
 
@@ -1289,8 +1300,8 @@ async def resolve_dependencies(
         for req_type, inferred_deps in zip(batched_inference_request_types, inferreds):
             applicable_tgts = [tgt for tgt in tgts if req_type.infer_from.is_applicable(tgt)]
             for tgt, deps in zip(applicable_tgts, inferred_deps):
-                result[tgt[Dependencies]][0].update(inferred.include for inferred in deps)
-                result[tgt[Dependencies]][1].update(inferred.exclude for inferred in deps)
+                result[tgt[Dependencies]][0].update(*(inferred.include for inferred in deps))
+                result[tgt[Dependencies]][1].update(*(inferred.exclude for inferred in deps))
 
     # ===== Generated Targets =====
 
@@ -1331,7 +1342,7 @@ async def resolve_dependencies(
         if explicitly_provided.includes:
             result[field][0].update(
                 await _fill_parameters(
-                    request.field.alias,
+                    field.alias,
                     tgt,
                     explicitly_provided.includes,
                     target_types_to_generate_requests,
@@ -1343,7 +1354,7 @@ async def resolve_dependencies(
         if explicitly_provided.ignores:
             result[field][1].update(
                 await _fill_parameters(
-                    request.field.alias,
+                    field.alias,
                     tgt,
                     tuple(explicitly_provided.ignores),
                     target_types_to_generate_requests,
@@ -1382,21 +1393,16 @@ async def resolve_dependencies(
             result[tgt[Dependencies]][0].update(special_cased)
 
     # ===== Put it all together =====
-
-    includes = [
-        addr
-        for expl_deps, field in zip(explicitly_provided_deps, request.fields)
-        for addr in expl_deps.includes.union(result[field][0])
-    ]
-    ignores = [
-        addr
-        for expl_deps, field in zip(explicitly_provided_deps, request.fields)
-        for addr in expl_deps.ignores.union(result[field][1])
-    ]
     batched_result = AddressesBatch(
         [
-            Addresses(sorted(addr for addr in yes if addr not in no))
-            for yes, no in zip(includes, ignores)
+            Addresses(
+                sorted(
+                    addr
+                    for addr in expl_deps.includes.union(result[field][0])
+                    if addr not in expl_deps.ignores.union(result[field][1])
+                )
+            )
+            for expl_deps, field in zip(explicitly_provided_deps, request.fields)
         ]
     )
 

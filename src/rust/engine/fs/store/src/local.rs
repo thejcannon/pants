@@ -15,6 +15,7 @@ use futures::future::{self, join_all, try_join, try_join_all};
 use hashing::{
   async_copy_and_hash, async_verified_copy, AgedFingerprint, Digest, Fingerprint, EMPTY_DIGEST,
 };
+use lazy_static::lazy_static;
 use sharded_lmdb::ShardedLmdb;
 use std::os::unix::fs::PermissionsExt;
 use task_executor::Executor;
@@ -22,11 +23,15 @@ use tempfile::NamedTempFile;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use workunit_store::ObservationMetric;
 
-/// How big a file must be to be stored as a file on disk.
-// NB: These numbers were chosen after micro-benchmarking the code on one machine at the time of
-// writing. They were chosen using a rough equation from the microbenchmarks that are optimized
-// for somewhere between 2 and 3 uses of the corresponding entry to "break even".
-const LARGE_FILE_SIZE_LIMIT: usize = 512 * 1024;
+lazy_static! {
+  /// How big a file must be to become an immutable input hardlink.
+  static ref LARGE_FILE_SIZE_LIMIT: usize = std::env::var("LARGEFILE_LIMIT_BYTES")
+    .ok()
+    .map(|mb_str| {
+      mb_str.parse::<usize>().unwrap()
+    })
+    .unwrap_or(512 * 1024);
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct TempImmutableLargeFile {
@@ -836,7 +841,7 @@ impl ByteStore {
   }
 
   pub(crate) fn should_use_fsdb(entry_type: EntryType, len: usize) -> bool {
-    entry_type == EntryType::File && len >= LARGE_FILE_SIZE_LIMIT
+    entry_type == EntryType::File && len >= *LARGE_FILE_SIZE_LIMIT
   }
 
   pub(crate) fn get_file_fsdb(&self) -> ShardedFSDB {

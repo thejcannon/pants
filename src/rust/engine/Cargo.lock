@@ -3382,6 +3382,7 @@ dependencies = [
  "http-body",
  "indexmap",
  "itertools",
+ "lazy_static",
  "lmdb-rkv",
  "log",
  "madvise",

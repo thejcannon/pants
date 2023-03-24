@@ -328,10 +328,6 @@ impl UnderlyingByteStore for ShardedFSDB {
           return Err(format!("Failed to store {src:?}."));
         }
       } else {
-        writer
-          .shutdown()
-          .await
-          .map_err(|e| format!("Failed to shutdown: {e}"))?;
         break;
       }
     }

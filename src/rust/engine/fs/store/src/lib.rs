@@ -258,12 +258,12 @@ impl RemoteStore {
         let store_into_fsdb =
           f_remote.is_none() && ByteStore::should_use_fsdb(entry_type, digest.size_bytes);
         if store_into_fsdb {
-          let tempfile = local_store
+          let mut tempfile = local_store
             .get_file_fsdb()
             .get_tempfile(digest.hash)
             .await?;
           remote_store
-            .load_file(digest, tempfile.open().await?)
+            .load_file(digest, &mut tempfile.file)
             .await?
             .ok_or_else(create_missing)?;
           tempfile.persist().await?;
@@ -1445,7 +1445,12 @@ impl Store {
     destination: PathBuf,
     target: String,
   ) -> Result<(), StoreError> {
-    symlink(target, destination).await?;
+    symlink(target.clone(), destination.clone())
+      .await
+      .map_err(|e| {
+        StoreError::from(e)
+          .enrich(&format!("Failed to symlink from {target:?} to {destination:?}"))
+      })?;
     Ok(())
   }
 
@@ -1461,9 +1466,21 @@ impl Store {
     // It also has the benefit of playing nicely with Docker for macOS file virtualization: see
     // #18162.
     #[cfg(target_os = "macos")]
-    copy(target, destination).await?;
+    copy(target.clone(), destination.clone())
+      .await
+      .map_err(|e| {
+        StoreError::from(e)
+          .enrich(&format!("Failed to copy from {target:?} to {destination:?}"))
+      })?;
+
     #[cfg(not(target_os = "macos"))]
-    hard_link(target, destination).await?;
+    hard_link(target.clone(), destination.clone())
+      .await
+      .map_err(|e| {
+        StoreError::from(e)
+          .enrich(&format!("Failed to hardlink from {target:?} to {destination:?}"))
+      })?;
+
     Ok(())
   }
 

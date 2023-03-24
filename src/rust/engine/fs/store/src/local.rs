@@ -3,7 +3,6 @@
 use super::{EntryType, ShrinkBehavior};
 
 use std::collections::{BinaryHeap, HashSet};
-use std::fmt::Debug;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -20,7 +19,7 @@ use sharded_lmdb::ShardedLmdb;
 use std::os::unix::fs::PermissionsExt;
 use task_executor::Executor;
 use tempfile::NamedTempFile;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use workunit_store::ObservationMetric;
 
 lazy_static! {
@@ -33,18 +32,25 @@ lazy_static! {
     .unwrap_or(512 * 1024);
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct TempImmutableLargeFile {
+  pub(crate) file: tokio::fs::File,
   tmp_path: PathBuf,
   final_path: PathBuf,
 }
 
 impl TempImmutableLargeFile {
-  pub async fn open(&self) -> tokio::io::Result<tokio::fs::File> {
-    tokio::fs::File::create(self.tmp_path.clone()).await
-  }
-
-  pub async fn persist(&self) -> Result<(), String> {
+  pub async fn persist(&mut self) -> Result<(), String> {
+    self
+    .file
+    .shutdown()
+    .await
+    .map_err(|e| format!("Failed to sync_all {:?}: {e}", self.tmp_path))?;
+    self
+    .file
+    .sync_all()
+    .await
+    .map_err(|e| format!("Failed to sync_all {:?}: {e}", self.tmp_path))?;
     tokio::fs::rename(self.tmp_path.clone(), self.final_path.clone())
       .await
       .map_err(|e| format!("Error while renaming: {e}."))?;
@@ -204,10 +210,11 @@ impl ShardedFSDB {
         |e| Err(format!("temp file creation task failed: {e}")),
       )
       .await?;
-    let (_, tmp_path) = named_temp_file
+    let (file, tmp_path) = named_temp_file
       .keep()
       .map_err(|e| format!("Failed to keep temp file: {e}"))?;
     Ok(TempImmutableLargeFile {
+      file: file.into(),
       tmp_path,
       final_path: dest_path,
     })
@@ -269,15 +276,12 @@ impl UnderlyingByteStore for ShardedFSDB {
     _initial_lease: bool,
   ) -> Result<(), String> {
     try_join_all(items.iter().map(|(fingerprint, bytes)| async move {
-      let tempfile = self.get_tempfile(*fingerprint).await?;
-      let mut dest = tempfile
-        .open()
-        .await
-        .map_err(|e| format!("Failed to open {tempfile:?}: {e}"))?;
-      dest
+      let mut tempfile = self.get_tempfile(*fingerprint).await?;
+      tempfile
+        .file
         .write_all(bytes)
         .await
-        .map_err(|e| format!("Failed to write bytes to {dest:?}: {e}"))?;
+        .map_err(|e| format!("Failed to write bytes to {tempfile:?}: {e}"))?;
       tempfile.persist().await?;
       Ok::<(), String>(())
     }))
@@ -293,20 +297,30 @@ impl UnderlyingByteStore for ShardedFSDB {
     expected_digest: Digest,
     src: PathBuf,
   ) -> Result<(), String> {
-    let dest = self.get_tempfile(expected_digest.hash).await?;
+    let mut dest = self.get_tempfile(expected_digest.hash).await?;
+    let mut writer = &mut dest.file;
     let mut attempts = 0;
     loop {
-      let (mut reader, mut writer) = try_join(tokio::fs::File::open(src.clone()), dest.open())
+      let mut reader = tokio::fs::File::open(src.clone())
         .await
-        .map_err(|e| format!("Failed to open either {src:?} or {dest:?}: {e}"))?;
+        .map_err(|e| format!("Failed to open {src:?}: {e}"))?;
       // TODO: Consider using `fclonefileat` on macOS, which would skip actual copying (read+write), and
       // instead just require verifying the resulting content after the syscall (read only).
       let should_retry =
         !async_verified_copy(expected_digest, src_is_immutable, &mut reader, &mut writer)
           .await
-          .map_err(|e| format!("Failed to copy bytes from {src:?} to {dest:?}: {e}"))?;
+          .map_err(|e| {
+            format!(
+              "Failed to copy bytes from {src:?} to {:?}: {e}",
+              dest.tmp_path
+            )
+          })?;
 
       if should_retry {
+        writer
+          .rewind()
+          .await
+          .map_err(|e| format!("Failed to rewind : {e}"))?;
         attempts += 1;
         let msg = format!("Input {src:?} changed while reading.");
         log::debug!("{}", msg);
@@ -315,13 +329,13 @@ impl UnderlyingByteStore for ShardedFSDB {
         }
       } else {
         writer
-          .flush()
+          .shutdown()
           .await
-          .map_err(|e| format!("Failed to flush {dest:?}: {e}"))?;
-        dest.persist().await?;
+          .map_err(|e| format!("Failed to shutdown: {e}"))?;
         break;
       }
     }
+    dest.persist().await?;
 
     Ok(())
   }

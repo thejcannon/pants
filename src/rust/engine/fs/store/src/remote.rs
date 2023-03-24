@@ -491,13 +491,13 @@ impl ByteStore {
   pub async fn load_file(
     &self,
     digest: Digest,
-    file: tokio::fs::File,
-  ) -> Result<Option<tokio::fs::File>, String> {
-    let mut result = self.load(digest, file).await;
-    if let Ok(Some(ref mut file)) = result {
-      file.rewind().await.map_err(|e| e.to_string())?;
+    file: &mut tokio::fs::File,
+  ) -> Result<Option<()>, String> {
+    if self.load_monomorphic(digest, file).await? {
+      Ok(Some(()))
+    } else {
+      Ok(None)
     }
-    result
   }
 
   ///

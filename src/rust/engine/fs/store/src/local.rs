@@ -50,7 +50,7 @@ impl TempImmutableLargeFile {
       .map_err(|e| format!("Error while renaming: {e}."))?;
     tokio::fs::set_permissions(&self.final_path, std::fs::Permissions::from_mode(0o555))
       .await
-      .map_err(|e| e.to_string())?;
+      .map_err(|e| format!("Failed to set permissions on {:?}: {e}", self.final_path))?;
     Ok(())
   }
 }
@@ -204,7 +204,9 @@ impl ShardedFSDB {
         |e| Err(format!("temp file creation task failed: {e}")),
       )
       .await?;
-    let (_, tmp_path) = named_temp_file.keep().map_err(|e| e.to_string())?;
+    let (_, tmp_path) = named_temp_file
+      .keep()
+      .map_err(|e| format!("Failed to keep temp file: {e}"))?;
     Ok(TempImmutableLargeFile {
       tmp_path,
       final_path: dest_path,
@@ -272,7 +274,10 @@ impl UnderlyingByteStore for ShardedFSDB {
         .open()
         .await
         .map_err(|e| format!("Failed to open {tempfile:?}: {e}"))?;
-      dest.write_all(bytes).await.map_err(|e| e.to_string())?;
+      dest
+        .write_all(bytes)
+        .await
+        .map_err(|e| format!("Failed to write bytes to {dest:?}: {e}"))?;
       tempfile.persist().await?;
       Ok::<(), String>(())
     }))
@@ -293,13 +298,13 @@ impl UnderlyingByteStore for ShardedFSDB {
     loop {
       let (mut reader, mut writer) = try_join(tokio::fs::File::open(src.clone()), dest.open())
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to open either {src:?} or {dest:?}: {e}"))?;
       // TODO: Consider using `fclonefileat` on macOS, which would skip actual copying (read+write), and
       // instead just require verifying the resulting content after the syscall (read only).
       let should_retry =
         !async_verified_copy(expected_digest, src_is_immutable, &mut reader, &mut writer)
           .await
-          .map_err(|e| e.to_string())?;
+          .map_err(|e| format!("Failed to copy bytes from {src:?} to {dest:?}: {e}"))?;
 
       if should_retry {
         attempts += 1;
@@ -309,7 +314,10 @@ impl UnderlyingByteStore for ShardedFSDB {
           return Err(format!("Failed to store {src:?}."));
         }
       } else {
-        writer.flush().await.map_err(|e| e.to_string())?;
+        writer
+          .flush()
+          .await
+          .map_err(|e| format!("Failed to flush {dest:?}: {e}"))?;
         dest.persist().await?;
         break;
       }

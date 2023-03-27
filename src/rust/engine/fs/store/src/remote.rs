@@ -491,13 +491,9 @@ impl ByteStore {
   pub async fn load_file(
     &self,
     digest: Digest,
-    file: &mut tokio::fs::File,
-  ) -> Result<Option<()>, String> {
-    if self.load_monomorphic(digest, file).await? {
-      Ok(Some(()))
-    } else {
-      Ok(None)
-    }
+    file: tokio::fs::File,
+  ) -> Result<Option<tokio::fs::File>, String> {
+    self.load(digest, file).await
   }
 
   ///

@@ -2,12 +2,14 @@
 // Licensed under the Apache License, Version 2.0 (see LICENSE).
 use super::{EntryType, ShrinkBehavior};
 
-use std::collections::{BinaryHeap, HashSet};
+use core::future::Future;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
+use async_oncecell::OnceCell;
 use async_trait::async_trait;
 use bytes::Bytes;
 use futures::future::{self, join_all, try_join, try_join_all};
@@ -15,11 +17,12 @@ use hashing::{
   async_copy_and_hash, async_verified_copy, AgedFingerprint, Digest, Fingerprint, EMPTY_DIGEST,
 };
 use lazy_static::lazy_static;
+use parking_lot::Mutex;
 use sharded_lmdb::ShardedLmdb;
 use std::os::unix::fs::PermissionsExt;
 use task_executor::Executor;
 use tempfile::NamedTempFile;
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use workunit_store::ObservationMetric;
 
 lazy_static! {
@@ -30,35 +33,6 @@ lazy_static! {
       mb_str.parse::<usize>().unwrap()
     })
     .unwrap_or(512 * 1024);
-}
-
-#[derive(Debug)]
-pub(crate) struct TempImmutableLargeFile {
-  pub(crate) file: tokio::fs::File,
-  tmp_path: PathBuf,
-  final_path: PathBuf,
-}
-
-impl TempImmutableLargeFile {
-  pub async fn persist(&mut self) -> Result<(), String> {
-    self
-    .file
-    .shutdown()
-    .await
-    .map_err(|e| format!("Failed to sync_all {:?}: {e}", self.tmp_path))?;
-    self
-    .file
-    .sync_all()
-    .await
-    .map_err(|e| format!("Failed to sync_all {:?}: {e}", self.tmp_path))?;
-    tokio::fs::rename(self.tmp_path.clone(), self.final_path.clone())
-      .await
-      .map_err(|e| format!("Error while renaming: {e}."))?;
-    tokio::fs::set_permissions(&self.final_path, std::fs::Permissions::from_mode(0o555))
-      .await
-      .map_err(|e| format!("Failed to set permissions on {:?}: {e}", self.final_path))?;
-    Ok(())
-  }
 }
 
 /// Trait for the underlying storage, which is either a ShardedLMDB or a ShardedFS.
@@ -180,6 +154,7 @@ pub(crate) struct ShardedFSDB {
   root: PathBuf,
   executor: Executor,
   lease_time: Duration,
+  dest_initializer: Arc<Mutex<HashMap<Fingerprint, Arc<OnceCell<()>>>>>,
 }
 
 impl ShardedFSDB {
@@ -188,36 +163,98 @@ impl ShardedFSDB {
     self.root.join(hex.get(0..2).unwrap()).join(hex)
   }
 
-  pub(crate) async fn get_tempfile(
+  async fn bytes_writer(
+    mut file: tokio::fs::File,
+    bytes: &Bytes,
+  ) -> Result<tokio::fs::File, String> {
+    file
+      .write_all(bytes)
+      .await
+      .map_err(|e| format!("Failed to write bytes: {e}"))?;
+    Ok(file)
+  }
+
+  async fn verified_copier<R>(
+    mut file: tokio::fs::File,
+    expected_digest: Digest,
+    src_is_immutable: bool,
+    mut reader: R,
+  ) -> Result<tokio::fs::File, String>
+  where
+    R: AsyncRead + Unpin,
+  {
+    let matches = async_verified_copy(expected_digest, src_is_immutable, &mut reader, &mut file)
+      .await
+      .map_err(|e| format!("Failed to copy bytes: {e}"))?;
+    if !matches {
+      Err("Bytes didn't match when copying.".to_string())
+    } else {
+      Ok(file)
+    }
+  }
+
+  pub(crate) async fn write_using<F, Fut>(
     &self,
     fingerprint: Fingerprint,
-  ) -> Result<TempImmutableLargeFile, String> {
-    let dest_path = self.get_path(fingerprint);
-    tokio::fs::create_dir_all(dest_path.parent().unwrap())
-      .await
-      .map_err(|e| format! {"Failed to create local store subdirectory {dest_path:?}: {e}"})?;
+    writer_func: F,
+  ) -> Result<(), String>
+  where
+    F: FnOnce(tokio::fs::File) -> Fut,
+    Fut: Future<Output = Result<tokio::fs::File, String>>,
+  {
+    let cell = self
+      .dest_initializer
+      .lock()
+      .entry(fingerprint)
+      .or_default()
+      .clone();
+    cell
+      .get_or_try_init(async {
+        let dest_path = self.get_path(fingerprint);
+        tokio::fs::create_dir_all(dest_path.parent().unwrap())
+          .await
+          .map_err(|e| format! {"Failed to create local store subdirectory {dest_path:?}: {e}"})?;
 
-    let dest_path2 = dest_path.clone();
-    // Make the tempfile in the same dir as the final file so that materializing the final file doesn't
-    // have to worry about parent dirs.
-    let named_temp_file = self
-      .executor
-      .spawn_blocking(
-        move || {
-          NamedTempFile::new_in(dest_path2.parent().unwrap())
-            .map_err(|e| format!("Failed to create temp file: {e}"))
-        },
-        |e| Err(format!("temp file creation task failed: {e}")),
-      )
-      .await?;
-    let (file, tmp_path) = named_temp_file
-      .keep()
-      .map_err(|e| format!("Failed to keep temp file: {e}"))?;
-    Ok(TempImmutableLargeFile {
-      file: file.into(),
-      tmp_path,
-      final_path: dest_path,
-    })
+        let dest_path2 = dest_path.clone();
+        // Make the tempfile in the same dir as the final file so that materializing the final file doesn't
+        // have to worry about parent dirs.
+        let named_temp_file = self
+          .executor
+          .spawn_blocking(
+            move || {
+              NamedTempFile::new_in(dest_path2.parent().unwrap())
+                .map_err(|e| format!("Failed to create temp file: {e}"))
+            },
+            |e| Err(format!("temp file creation task failed: {e}")),
+          )
+          .await?;
+        let (std_file, tmp_path) = named_temp_file
+          .keep()
+          .map_err(|e| format!("Failed to keep temp file: {e}"))?;
+
+        match writer_func(std_file.into()).await {
+          Ok(mut tokio_file) => {
+            tokio_file
+              .shutdown()
+              .await
+              .map_err(|e| format!("Failed to shutdown {tmp_path:?}: {e}"))?;
+
+            tokio::fs::set_permissions(&tmp_path, std::fs::Permissions::from_mode(0o555))
+              .await
+              .map_err(|e| format!("Failed to set permissions on {:?}: {e}", tmp_path))?;
+            tokio::fs::rename(tmp_path.clone(), dest_path.clone())
+              .await
+              .map_err(|e| format!("Error while renaming: {e}."))?;
+            Ok(())
+          }
+          Err(e) => {
+            let _ = tokio::fs::remove_file(tmp_path).await;
+            Err(e)
+          }
+        }
+      })
+      .await
+      .cloned()
   }
 }
 
@@ -276,13 +313,9 @@ impl UnderlyingByteStore for ShardedFSDB {
     _initial_lease: bool,
   ) -> Result<(), String> {
     try_join_all(items.iter().map(|(fingerprint, bytes)| async move {
-      let mut tempfile = self.get_tempfile(*fingerprint).await?;
-      tempfile
-        .file
-        .write_all(bytes)
-        .await
-        .map_err(|e| format!("Failed to write bytes to {tempfile:?}: {e}"))?;
-      tempfile.persist().await?;
+      self
+        .write_using(*fingerprint, |file| Self::bytes_writer(file, bytes))
+        .await?;
       Ok::<(), String>(())
     }))
     .await?;
@@ -297,30 +330,22 @@ impl UnderlyingByteStore for ShardedFSDB {
     expected_digest: Digest,
     src: PathBuf,
   ) -> Result<(), String> {
-    let mut dest = self.get_tempfile(expected_digest.hash).await?;
-    let mut writer = &mut dest.file;
     let mut attempts = 0;
     loop {
-      let mut reader = tokio::fs::File::open(src.clone())
+      let reader = tokio::fs::File::open(src.clone())
         .await
         .map_err(|e| format!("Failed to open {src:?}: {e}"))?;
+
       // TODO: Consider using `fclonefileat` on macOS, which would skip actual copying (read+write), and
       // instead just require verifying the resulting content after the syscall (read only).
-      let should_retry =
-        !async_verified_copy(expected_digest, src_is_immutable, &mut reader, &mut writer)
-          .await
-          .map_err(|e| {
-            format!(
-              "Failed to copy bytes from {src:?} to {:?}: {e}",
-              dest.tmp_path
-            )
-          })?;
+      let should_retry = self
+        .write_using(expected_digest.hash, |file| {
+          Self::verified_copier(file, expected_digest, src_is_immutable, reader)
+        })
+        .await
+        .is_err();
 
       if should_retry {
-        writer
-          .rewind()
-          .await
-          .map_err(|e| format!("Failed to rewind : {e}"))?;
         attempts += 1;
         let msg = format!("Input {src:?} changed while reading.");
         log::debug!("{}", msg);
@@ -331,7 +356,6 @@ impl UnderlyingByteStore for ShardedFSDB {
         break;
       }
     }
-    dest.persist().await?;
 
     Ok(())
   }
@@ -482,6 +506,7 @@ impl ByteStore {
           executor: executor.clone(),
           root: fsdb_files_root,
           lease_time: options.lease_time,
+          dest_initializer: Arc::new(Mutex::default()),
         },
         executor,
         filesystem_device,

@@ -12,10 +12,10 @@ on:
         description: The PR number to cherry-pick
         type: string
         required: true
-        
+
 jobs:
   build:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -24,6 +24,6 @@ jobs:
 
       - name: Cherry-Pick
         run: |
-          build-support/bin/cherry_pick.sh ${{ github.event.pull_request.number }}
+          build-support/bin/cherry_pick.sh ${{ github.event.pull_request.number || inputs.PR_number }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

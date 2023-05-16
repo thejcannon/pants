@@ -25,6 +25,8 @@ jobs:
         run: |
           COMMIT=$(gh pr view "${{ github.event.pull_request.number || inputs.PR_number }}" --json mergeCommit --jq '.mergeCommit.oid')
           echo "merge_commit=$COMMIT" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   picker:
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'

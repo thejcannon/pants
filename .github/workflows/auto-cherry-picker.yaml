@@ -12,22 +12,29 @@ on:
         description: The PR number to cherry-pick
         type: string
         required: true
-      merged_ref:
-        description: The ref of the commit that got merged to `main`
-        type: string
-        required: false
-        default: ""
 
 jobs:
-  build:
+  inputs:
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    outputs:
+      merge_commit: ${{ steps.step1.outputs.merge_commit }}
+    steps:
+      - id: step1
+        name: Get merge commit
+        run: |
+          COMMIT=$(gh pr view "${{ github.event.pull_request.number || inputs.PR_number }}" --json mergeCommit --jq '.mergeCommit.oid')
+          echo "merge_commit=$COMMIT" >> "$GITHUB_OUTPUT"
 
+  picker:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: inputs
     steps:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          ref: ${{ inputs.merged_ref }}
+          ref: ${{ needs.inputs.outputs.merge_commit }}
 
       - name: Cherry-Pick
         run: |

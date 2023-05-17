@@ -23,7 +23,7 @@ jobs:
       - id: step1
         name: Get merge commit
         run: |
-          COMMIT=$(gh pr view --repo "${{ github.repository_owner }}/${{ github.repository }}" "${{ github.event.pull_request.number || inputs.PR_number }}" --json mergeCommit --jq '.mergeCommit.oid')
+          COMMIT=$(gh pr view --repo "${{ github.repository }}" "${{ github.event.pull_request.number || inputs.PR_number }}" --json mergeCommit --jq '.mergeCommit.oid')
           echo "merge_commit=$COMMIT" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

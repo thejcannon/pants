@@ -15,7 +15,8 @@ on:
 
 jobs:
   picker:
-    if: (github.event.pull_request.merged == true && && contains(github.event.pull_request.labels.*.name, 'needs-cherrypick') ) || github.event_name == 'workflow_dispatch'    runs-on: ubuntu-latest
+    if: (github.event.pull_request.merged == true && && contains(github.event.pull_request.labels.*.name, 'needs-cherrypick') ) || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v2

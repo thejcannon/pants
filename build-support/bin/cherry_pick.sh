@@ -66,6 +66,7 @@ BODY_FILE=$(mktemp "/tmp/github.cherrypick.$PR_NUM.XXXXXX")
 gh pr view "$PR_NUM" --json body --jq '.body' > "$BODY_FILE"
 
 for MILESTONE in $MILESTONES; do
+  git fetch https://github.com/thejcannon/pants "$COMMIT"
   git fetch https://github.com/thejcannon/pants "$MILESTONE" || continue
 
   PR_CREATE_CMD=(gh pr create --base "$MILESTONE" --title "$TITLE (Cherry-pick of #$PR_NUM)" --label "$CATEGORY_LABEL" --body-file "$BODY_FILE")

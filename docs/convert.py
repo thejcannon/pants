@@ -4,35 +4,6 @@ import re
 import subprocess
 import json
 
-directory_path = 'docs/markdown'
-
-def replace_parameter_block(matchobj):
-    data = json.loads(matchobj.group(1))
-    cols, rows = data["cols"], data["rows"]
-    assert all(x == "left" for x in data["align"])
-
-    result =  "| " + " | ".join(data["data"][f"h-{i}"] for i in range(cols)) + " |"
-    result += "\n"
-    result += "| " + " | ".join(":---" for i in range(cols)) + " |"
-    result += "\n"
-    for x in range(rows):
-        result += "| " + " | ".join(data["data"][f"{x}-{y}"].replace("\n", "<br>") for y in range(cols)) + " |"
-        result += "\n"
-    return result
-
-def replace_admonition(matchobj):
-    type_ = {
-        "📘": "note",
-        "👍": "success",
-        "🚧": "warning",
-        "❗️": "danger",
-    }[matchobj[1]]
-
-    lines = "\n".join(f"    {line[2:]}" for line in matchobj[3].splitlines())
-
-    return f'!!! {type_} "{matchobj[2]}"\n{lines}\n'
-
-# ======================================
 
 subprocess.check_call(["git", "checkout", "--", "docs/markdown"])
 subprocess.check_call(["git", "clean", "-df", "docs/markdown"])
@@ -54,8 +25,30 @@ subprocess.check_call(["git", "clean", "-df", "docs/markdown"])
 #mv "docs/markdown/Using Pants" docs/markdown/using-pants
 # ... on and on and so forth
 
+# Slugify directories
+for root, dirnames, _ in os.walk('docs/markdown'):
+    for dirname in dirnames:
+        os.rename(os.path.join(root, dirname), os.path.join(root, re.sub(r'[^\w\s]', '', dirname).lower().replace(" ", "-")))
+
+# Rename files to `index.md` where appropriate
+for root, dirnames, _ in os.walk('docs/markdown'):
+    for dirname in dirnames:
+        path = os.path.join(root, dirname)
+        maybe_index = os.path.join(path, dirname + ".md")
+        # Child
+        # E.g. getting-help/getting-help.md -> getting-help/index.md
+        if os.path.exists(maybe_index):
+            os.rename(maybe_index, os.path.join(path, "index.md"))
+        # Sibling
+        # E.g. getting-help/the-pants-community.md -> getting-help/the-pants-community/index.md
+        maybe_index = os.path.join(root, dirname + ".md")
+        if os.path.exists(maybe_index):
+            os.rename(maybe_index, os.path.join(path, "index.md"))
+
+
+# Grab the page slugs (for linking later)
 page_by_slug = {}
-for root, _, filenames in os.walk(directory_path):
+for root, _, filenames in os.walk('docs/markdown'):
     for filename in filenames:
         file_path = os.path.join(root, filename)
         with open(file_path, "r") as file:
@@ -65,7 +58,7 @@ for root, _, filenames in os.walk(directory_path):
 
 
 
-for root, _, filenames in os.walk(directory_path):
+for root, _, filenames in os.walk('docs/markdown'):
     for filename in filenames:
         file_path = os.path.join(root, filename)
         with open(file_path, "r") as file:
@@ -92,6 +85,20 @@ for root, _, filenames in os.walk(directory_path):
         # @TODO: block:embed
 
         # block:parameters
+        def replace_parameter_block(matchobj):
+            data = json.loads(matchobj.group(1))
+            cols, rows = data["cols"], data["rows"]
+            assert all(x == "left" for x in data["align"])
+
+            result =  "| " + " | ".join(data["data"][f"h-{i}"] for i in range(cols)) + " |"
+            result += "\n"
+            result += "| " + " | ".join(":---" for i in range(cols)) + " |"
+            result += "\n"
+            for x in range(rows):
+                result += "| " + " | ".join(data["data"][f"{x}-{y}"].replace("\n", "<br>") for y in range(cols)) + " |"
+                result += "\n"
+            return result
+
         newtext = re.sub(
             r"\[block:parameters\](.*?)\[/block\]",
             replace_parameter_block,
@@ -107,6 +114,18 @@ for root, _, filenames in os.walk(directory_path):
         )
 
         # Admonitions
+        def replace_admonition(matchobj):
+            type_ = {
+                "📘": "note",
+                "👍": "success",
+                "🚧": "warning",
+                "❗️": "danger",
+            }[matchobj[1]]
+
+            lines = "\n".join(f"    {line[2:]}" for line in matchobj[3].splitlines())
+
+            return f'!!! {type_} "{matchobj[2]}"\n{lines}\n'
+
         newtext = re.sub(
             r"> (📘|👍|🚧|❗️) (.*?)\n((>.*?\n)+)",
             replace_admonition,
@@ -119,7 +138,6 @@ for root, _, filenames in os.walk(directory_path):
             if slug.startswith("reference"):
                 return f"[{matchobj[1]}](doc:{slug})"
 
-            print(file_path)
             slug, hashsign, anchor = slug.partition("#")
             target_page = page_by_slug[slug]
             relative_path = os.path.relpath(file_path, start=os.path.dirname(target_page))
@@ -133,7 +151,6 @@ for root, _, filenames in os.walk(directory_path):
         )
 
         if newtext != text:
-            print(f"replacing: {file_path}")
             with open(file_path, "w") as file:
                 file.write(newtext)
 

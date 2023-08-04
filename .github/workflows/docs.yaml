@@ -2,7 +2,6 @@ name: Build experimental docs
 on:
   push:
     branches:
-      - main
       - jcannon/documentation
   workflow_dispatch:
 
@@ -25,16 +24,6 @@ jobs:
         with:
           repository: thejcannon/pants
           ref: jcannon/documentation
-      - name: Check out code
-        uses: actions/checkout@v3
-        with:
-          repository: thejcannon/pants
-          ref: main
-      - name: Merge docs branch
-        run: |
-          git config --global user.email "joshdcannon@gmail.com"
-          git config --global user.name "Joshua Cannon"
-          git cherry-pick thejcannon/pants
       - name: Convert docs
         run: |
           docs/convert.sh

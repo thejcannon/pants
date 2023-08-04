@@ -27,10 +27,7 @@ jobs:
         run: |
           git config --global user.email "joshdcannon@gmail.com"
           git config --global user.name "Joshua Cannon"
-          git checkout jcannon/documentation
-          git pull
-          git checkout main
-          git merge jcannon/documentation
+          git pull origin jcannon/documentation
       - name: Convert docs
         run: |
           docs/convert.sh

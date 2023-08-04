@@ -137,4 +137,4 @@ for root, _, filenames in os.walk(directory_path):
             with open(file_path, "w") as file:
                 file.write(newtext)
 
-subprocess.check_call(["npx", "prettier", "--write docs/"])
+# subprocess.check_call(["npx", "prettier", "--write docs/"])

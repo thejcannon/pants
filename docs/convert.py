@@ -1,6 +1,7 @@
 import os
 import os.path
 import re
+import subprocess
 import json
 
 directory_path = 'docs/markdown'
@@ -31,6 +32,27 @@ def replace_admonition(matchobj):
 
     return f'!!! {type_} "{matchobj[2]}"\n{lines}\n'
 
+# ======================================
+
+subprocess.check_call(["git", "checkout", "--", "docs/markdown"])
+subprocess.check_call(["git", "clean", "-df", "docs/markdown"])
+
+
+# @TODO: Do slugification
+# - Rename dirs/files
+#   - Introduction
+#mv docs/markdown/Introduction docs/markdown/introduction
+#   - Getting Started
+#mv "docs/markdown/Getting Started" docs/markdown/getting-started
+#mv docs/markdown/getting-started/getting-started.md docs/markdown/getting-started/index.md
+#mv docs/markdown/getting-started/getting-started/*.md docs/markdown/getting-started
+#rm -rf docs/markdown/getting-started/getting-started
+#   - Getting Help
+#mv "docs/markdown/Getting Help" docs/markdown/getting-help
+#mv docs/markdown/getting-help/the-pants-community.md docs/markdown/getting-help/the-pants-community/index.md
+#   - Using Pants
+#mv "docs/markdown/Using Pants" docs/markdown/using-pants
+# ... on and on and so forth
 
 page_by_slug = {}
 for root, _, filenames in os.walk(directory_path):
@@ -114,3 +136,5 @@ for root, _, filenames in os.walk(directory_path):
             print(f"replacing: {file_path}")
             with open(file_path, "w") as file:
                 file.write(newtext)
+
+subprocess.check_call(["npx", "prettier", "--write docs/"])

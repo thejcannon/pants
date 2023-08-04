@@ -24,7 +24,7 @@ jobs:
         run: |
           # Not using Pants because I wanna go Sanic fast
           pip install mkdocs mkdocs-material
-          mkdocs build -f docs/mkdocs.yaml
+          mkdocs build -f docs/mkdocs.yml
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact

@@ -28,8 +28,8 @@ jobs:
         run: |
           git config --global user.email "joshdcannon@gmail.com"
           git config --global user.name "Joshua Cannon"
-          git config pull.rebase false
-          git pull origin jcannon/documentation
+          git fetch origin jcannon/documentation
+          git merge --allow-unrelated-histories origin/jcannon/documentation
       - name: Convert docs
         run: |
           docs/convert.sh

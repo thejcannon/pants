@@ -1,8 +1,9 @@
 name: Build experimental docs
 on:
   push:
-    paths:
-      - docs/**
+    branches:
+      - main
+      - jcannon/documentation
   workflow_dispatch:
 
 permissions:

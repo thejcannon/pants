@@ -27,8 +27,7 @@ jobs:
       - name: Convert docs
         run: |
           yq eval '.site_url = "https://thejcannon.github.io/pants/docs"' -i docs/mkdocs.yml
-          docs/convert.sh
-          
+          python docs/convert.py
       - name: Build docs
         run: |
           # Not using Pants because I wanna go Sanic fast

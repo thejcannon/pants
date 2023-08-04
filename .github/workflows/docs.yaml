@@ -14,7 +14,7 @@ jobs:
       - name: Merge docs branch
         run: |
           git fetch origin jcannon/documentation
-          git merge FETCH_HEAD
+          git cherry-pick FETCH_HEAD
       - name: Convert docs
         run: |
           docs/convert.sh

@@ -1,7 +1,7 @@
 name: Build experimental docs
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "jcannon/documentation"]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v3
+        with:
+          ref: main
       - name: Merge docs branch
         run: |
           git config --global user.email "joshdcannon@gmail.com"

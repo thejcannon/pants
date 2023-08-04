@@ -23,16 +23,18 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          ref: main
+          repository: thejcannon/pants
+          ref: jcannon/documentation
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          ref: jcannon/documentation
+          repository: thejcannon/pants
+          ref: main
       - name: Merge docs branch
         run: |
           git config --global user.email "joshdcannon@gmail.com"
           git config --global user.name "Joshua Cannon"
-          git merge origin/main
+          git cherry-pick thejcannon/pants
       - name: Convert docs
         run: |
           docs/convert.sh

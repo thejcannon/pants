@@ -54,8 +54,7 @@ for root, _, filenames in os.walk('docs/markdown'):
         with open(file_path, "r") as file:
             text = file.read()
             match = re.search(r'slug: "(.*?)"', text)
-            page_by_slug[match[1]] = file_path
-
+            page_by_slug[match[1]] = os.path.relpath(file_path, "docs/markdown")
 
 
 for root, _, filenames in os.walk('docs/markdown'):
@@ -140,7 +139,8 @@ for root, _, filenames in os.walk('docs/markdown'):
 
             slug, hashsign, anchor = slug.partition("#")
             target_page = page_by_slug[slug]
-            relative_path = os.path.relpath(file_path, start=os.path.dirname(target_page))
+            relative_path = os.path.relpath(target_page, start=os.path.dirname(os.path.relpath(file_path, start="docs/markdown")))
+            print(file_path, target_page, relative_path)
             return f"[{matchobj[1]}]({relative_path}{hashsign}{anchor})"
 
 
@@ -149,6 +149,8 @@ for root, _, filenames in os.walk('docs/markdown'):
             replace_doc_link,
             newtext,
         )
+
+        # @TODO: Fix the link inside the <figure> in docs/markdown/introduction/testimonials.md
 
         if newtext != text:
             with open(file_path, "w") as file:

@@ -1,6 +1,7 @@
 import os
 import os.path
 import re
+import shutil
 import subprocess
 import json
 
@@ -8,22 +9,6 @@ import json
 subprocess.check_call(["git", "checkout", "--", "docs/markdown"])
 subprocess.check_call(["git", "clean", "-df", "docs/markdown"])
 
-
-# @TODO: Do slugification
-# - Rename dirs/files
-#   - Introduction
-#mv docs/markdown/Introduction docs/markdown/introduction
-#   - Getting Started
-#mv "docs/markdown/Getting Started" docs/markdown/getting-started
-#mv docs/markdown/getting-started/getting-started.md docs/markdown/getting-started/index.md
-#mv docs/markdown/getting-started/getting-started/*.md docs/markdown/getting-started
-#rm -rf docs/markdown/getting-started/getting-started
-#   - Getting Help
-#mv "docs/markdown/Getting Help" docs/markdown/getting-help
-#mv docs/markdown/getting-help/the-pants-community.md docs/markdown/getting-help/the-pants-community/index.md
-#   - Using Pants
-#mv "docs/markdown/Using Pants" docs/markdown/using-pants
-# ... on and on and so forth
 
 # Slugify directories
 for root, dirnames, _ in os.walk('docs/markdown'):
@@ -45,6 +30,14 @@ for root, dirnames, _ in os.walk('docs/markdown'):
         if os.path.exists(maybe_index):
             os.rename(maybe_index, os.path.join(path, "index.md"))
 
+# Other renames/moves
+shutil.copytree("docs/markdown/getting-started/getting-started", "docs/markdown/getting-started", dirs_exist_ok=True)
+shutil.rmtree("docs/markdown/getting-started/getting-started")
+os.rename("docs/markdown/python/python", "docs/markdown/python/python-overview")
+os.rename("docs/markdown/python/index.md", "docs/markdown/python/python-overview/index.md")
+os.rename("docs/markdown/helm/helm-overview.md", "docs/markdown/helm/index.md")
+os.rename("docs/markdown/writing-plugins/plugins-overview.md", "docs/markdown/writing-plugins/index.md")
+os.rename("docs/markdown/contributions/contributor-overview.md", "docs/markdown/contributions/index.md")
 
 # Grab the page slugs (for linking later)
 page_by_slug = {}
@@ -155,5 +148,222 @@ for root, _, filenames in os.walk('docs/markdown'):
         if newtext != text:
             with open(file_path, "w") as file:
                 file.write(newtext)
+
+# Make navs
+NAV = [
+    {"Introduction": {"dir":"introduction", "sub": [
+        "how-does-pants-work",
+        "language-support",
+        "media",
+        "news-room",
+        "sponsorship",
+        "testimonials",
+        "welcome-to-pants",
+        "who-uses-pants",
+    ]},},
+    {"Getting Started": {"dir":"getting-started", "sub": [
+        "index",
+        "prerequisites",
+        "installation",
+        "initial-configuration",
+        "example-repos",
+        "existing-repositories",
+        "manual-installation",
+    ]},},
+    {"Getting Help": {"dir":"getting-help", "sub": [
+        {"The Pants Community": {"dir": "the-pants-community", "sub": [
+            "code-of-conduct",
+            "team",
+            "maintainers",
+            "contentious-decisions",
+        ]}},
+        "service-providers"
+    ]},},
+    {"Using Pants": {"dir":"using-pants", "sub": [
+        {"Key Concepts": {"dir": "concepts", "sub": [
+            "goals",
+            "targets",
+            "options",
+            "enabling-backends",
+            "source-roots",
+        ],},},
+        "command-line-help",
+        "troubleshooting",
+        "advanced-target-selection",
+        "project-introspection",
+        "assets",
+        "using-pants-in-ci",
+        "setting-up-an-ide",
+        {"Remote caching & execution": {"dir": "remote-caching-execution", "sub": [
+            "index",
+            "remote-caching",
+            "remote-execution",
+        ],},},
+        "environments",
+        "generating-version-tags",
+        "anonymous-telemetry",
+        "restricted-internet-access",
+        "validating-dependencies",
+    ]},},
+    {"Python": {"dir":"python", "sub": [
+        # @TODO: These dirs could also likely use a rename
+        {"Python Overview": {"dir": "python-overview", "sub": [
+            "index",
+            # @TODO: These files could likely use a rename
+            "python-backend",
+            "python-third-party-dependencies",
+            "python-lockfiles",
+            "python-interpreter-compatibility",
+            "python-linters-and-formatters",
+            "pex-files",
+            "python-distributions",
+        ]}},
+        {"Goals": {"dir": "python-goals", "sub": [
+            "index",
+            "python-check-goal",
+            "python-fmt-goal",
+            "python-lint-goal",
+            "python-package-goal",
+            "python-repl-goal",
+            "python-run-goal",
+            "python-test-goal",
+        ]}},
+        {"Integrations": {"dir": "python-integrations", "sub": [
+            "index",
+            "protobuf-python",
+            "thrift-python",
+            "awslambda-python",
+            "google-cloud-function-python",
+            "pyoxidizer",
+            "jupyter",
+        ]}},
+    ]},},
+    {"Go": {"dir":"go", "sub": [
+        "index",
+        {"Integrations": {"dir": "go-integrations", "sub": [
+            "index",
+            "protobuf-go",
+        ]}},
+
+    ]},},
+    # @TODO: Should this be renamed to JVM? Then the Java/Scala page renamed to Java/Scala?
+    {"Java and Scala": {"dir":"java-and-scala", "sub": [
+        "jvm-overview",
+        "kotlin",
+    ]},},
+    {"Shell": {"dir":"shell", "sub": [
+        "index",
+        "run-shell-commands",
+    ]},},
+    {"Docker": {"dir":"docker", "sub": [
+        "index",
+        "tagging-docker-images",
+    ]},},
+    {"Helm": {"dir":"helm", "sub": [
+        "index",
+        "helm-deployments",
+        "helm-kubeconform",
+    ]},},
+    {"Ad-Hoc Tools": {"dir":"adhoc-tools", "sub": [
+        "adhoc-tools",
+    ]},},
+    {"Writing Plugins": {"dir":"writing-plugins", "sub": [
+        "index.md",
+        "macros",
+        {"The Target API": {"dir": "target-api", "sub": [
+            "index",
+            "target-api-concepts",
+            "target-api-new-fields",
+            "target-api-new-targets",
+            "target-api-extending-targets",
+        ]}},
+        {"The Rules API": {"dir": "rules-api", "sub": [
+            "index",
+            "rules-api-concepts",
+            "rules-api-goal-rules",
+            "rules-api-subsystems",
+            "rules-api-file-system",
+            "rules-api-process",
+            "rules-api-installing-tools",
+            "rules-api-and-target-api",
+            "rules-api-unions",
+            "rules-api-logging",
+            "rules-api-testing",
+            "rules-api-tips",
+        ]}},
+        {"Common plugin tasks": {"dir": "common-plugin-tasks", "sub": [
+            # @TODO: plugins-package-goal is hidden
+            "index",
+            "plugins-lint-goal",
+            "plugins-fmt-goal",
+            "plugins-typecheck-goal",
+            "plugins-codegen",
+            "plugins-repl-goal",
+            "plugins-test-goal",
+            "plugins-setup-py",
+            "plugin-upgrade-guide",
+            # @TODO: Missing MD "Plugin helpers", https://www.pantsbuild.org/v2.17/docs/plugin-helpers
+        ]}},
+
+    ]},},
+    {"Releases": {"dir":"releases", "sub": [
+        "changelog",
+        "deprecation-policy",
+        "upgrade-tips",
+    ]},},
+    {"Contributions": {"dir":"contributions", "sub": [
+        "index",
+        {"Development": {"dir": "development", "sub": [
+            "index",
+            "contributor-setup",
+            "style-guide",
+            "contributions-rust",
+            "internal-rules-architecture",
+            "contributions-debugging",
+            "running-pants-from-sources",
+        ]}},
+        {"Releases": {"dir": "development", "sub": [
+            "index",
+            "release-strategy",
+            "release-process",
+            "ci-for-macos-on-arm64",
+        ]}},
+    ]},},
+    # @TODO: Reference. Maybe https://oprypin.github.io/mkdocs-gen-files/
+    {"Tutorials": {"dir": "tutorials", "sub": [
+        "test-custom-plugin-goal",
+        "create-a-new-goal",
+        "advanced-plugin-concepts",
+    ]},},
+]
+def get_dirname(unary_dict):
+    return next(iter(unary_dict.values()))["dir"]
+
+def make_nav(base, sections):
+
+    result = []
+    for section in sections:
+        if isinstance(section, str):
+            result.append(section)
+        else:
+            assert isinstance(section, dict)
+            title, obj = next(iter(section.items()))
+            result.append(f"{title}: {obj['dir']}")
+            make_nav(f"{base}/{obj['dir']}", obj["sub"])
+
+    with open(f"{base}/.nav.yaml", "w") as file:
+        file.write("nav:\n")
+        file.write("\n".join(
+            [
+                f"  - {s}"
+                for s in result
+            ]
+        ))
+        file.write("\n")
+
+make_nav("docs/markdown", NAV)
+
+
+# @TODO: Turn the dict into `.nav.yaml` files
 
 # subprocess.check_call(["npx", "prettier", "--write docs/"])

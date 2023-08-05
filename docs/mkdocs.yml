@@ -31,9 +31,13 @@ markdown_extensions:
       permalink: true
 
 plugins:
+  - awesome-pages:
+      filename: .nav.yaml
+      collapse_single_pages: true
   - redirects:
       redirect_maps:
         "index.md": "introduction/welcome-to-pants.md"
+  - search
 
 extra_css:
   - css/extra.css
@@ -42,32 +46,3 @@ extra_css:
 repo_name: pantsbuild/pants
 repo_url: https://github.com/pantsbuild/pants
 edit_uri: edit/main/docs/markdown
-# @TODO: Autogen this?
-
-# nav:
-#   - Introduction:
-#       - introduction/how-does-pants-work.md
-#       - introduction/language-support.md
-#       - introduction/media.md
-#       - introduction/news-room.md
-#       - introduction/sponsorship.md
-#       - introduction/testimonials.md
-#       - introduction/welcome-to-pants.md
-#       - introduction/who-uses-pants.md
-#   - Getting Started:
-#       - getting-started/index.md
-#       - getting-started/prerequisites.md
-#       - getting-started/installation.md
-#       - getting-started/initial-configuration.md
-#       - getting-started/example-repos.md
-#       - getting-started/existing-repositories.md
-#       - getting-started/manual-installation.md
-#   - Getting Help:
-#       - getting-help/getting-help.md
-#       - The Pants community:
-#           - getting-help/the-pants-community/index.md
-#           - getting-help/the-pants-community/code-of-conduct.md
-#           - getting-help/the-pants-community/team.md
-#           - getting-help/the-pants-community/maintainers.md
-#           - getting-help/the-pants-community/contentious-decisions.md
-#       - getting-help/service-providers.md

@@ -74,7 +74,15 @@ for root, _, filenames in os.walk('docs/markdown'):
             flags=re.DOTALL
         )
 
-        # @TODO: block:embed
+        # block: embed
+        def unslash_quotes(matchobj):
+            return matchobj[1].replace('\\"', '"')
+        newtext = re.sub(
+            r"\[block:embed\].*?(<iframe.*?</iframe>).*?\[/block\]",
+            unslash_quotes,
+            newtext,
+            flags=re.DOTALL
+        )
 
         # block:parameters
         def replace_parameter_block(matchobj):

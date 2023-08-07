@@ -265,10 +265,10 @@ NAV = [
         "helm-kubeconform",
     ]},},
     {"Ad-Hoc Tools": {"dir":"adhoc-tools", "sub": [
-        "adhoc-tools",
+        "adhoc-tool",
     ]},},
     {"Writing Plugins": {"dir":"writing-plugins", "sub": [
-        "index.md",
+        "index",
         "macros",
         {"The Target API": {"dir": "target-api", "sub": [
             "index",
@@ -322,7 +322,7 @@ NAV = [
             "contributions-debugging",
             "running-pants-from-sources",
         ]}},
-        {"Releases": {"dir": "development", "sub": [
+        {"Releases": {"dir": "releases", "sub": [
             "index",
             "release-strategy",
             "release-process",
@@ -344,7 +344,7 @@ def make_nav(base, sections):
     result = []
     for section in sections:
         if isinstance(section, str):
-            result.append(section)
+            result.append(section + ".md")
         else:
             assert isinstance(section, dict)
             title, obj = next(iter(section.items()))
@@ -362,8 +362,5 @@ def make_nav(base, sections):
         file.write("\n")
 
 make_nav("docs/markdown", NAV)
-
-
-# @TODO: Turn the dict into `.nav.yaml` files
 
 # subprocess.check_call(["npx", "prettier", "--write docs/"])

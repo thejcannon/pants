@@ -31,7 +31,7 @@ jobs:
       - name: Build docs
         run: |
           # Not using Pants because I wanna go Sanic fast
-          pip install mkdocs mkdocs-material mkdocs-redirects
+          pip install mkdocs mkdocs-material mkdocs-redirects mkdocs-gen-files mkdocs-awesome-pages-plugin
           mkdocs build -f docs/mkdocs.yml
           mkdir -p dist/site
           mv docs/site dist/site/docs

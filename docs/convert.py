@@ -38,6 +38,7 @@ os.rename("docs/markdown/python/index.md", "docs/markdown/python/python-overview
 os.rename("docs/markdown/helm/helm-overview.md", "docs/markdown/helm/index.md")
 os.rename("docs/markdown/writing-plugins/plugins-overview.md", "docs/markdown/writing-plugins/index.md")
 os.rename("docs/markdown/contributions/contributor-overview.md", "docs/markdown/contributions/index.md")
+os.mkdir("docs/markdown/reference")
 
 # Grab the page slugs (for linking later)
 page_by_slug = {}
@@ -337,7 +338,7 @@ NAV = [
             "ci-for-macos-on-arm64",
         ]}},
     ]},},
-    # @TODO: Reference. Maybe https://oprypin.github.io/mkdocs-gen-files/
+    {"Reference": {"dir": "reference", "sub": []}},
     {"Tutorials": {"dir": "tutorials", "sub": [
         "test-custom-plugin-goal",
         "create-a-new-goal",

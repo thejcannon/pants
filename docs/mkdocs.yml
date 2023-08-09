@@ -18,9 +18,11 @@ theme:
     - content.action.view
     - content.code.copy
     - navigation.indexes
+
 markdown_extensions:
   - admonition:
-  - md_in_html:
+  - attr_list
+  - md_in_html
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
@@ -32,17 +34,20 @@ markdown_extensions:
   - toc:
       permalink: true
 
+extra_css:
+  - _stylesheets/extra.css
+
 plugins:
   - awesome-pages:
       filename: .nav.yaml
       collapse_single_pages: true
+  - gen-files:
+      scripts:
+        - generate_reference_docs.py
   - redirects:
       redirect_maps:
         "index.md": "introduction/welcome-to-pants.md"
   - search
-
-extra_css:
-  - css/extra.css
 
 # GitHub
 repo_name: pantsbuild/pants

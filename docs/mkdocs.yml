@@ -38,12 +38,12 @@ extra_css:
   - _stylesheets/extra.css
 
 plugins:
-  - awesome-pages:
-      filename: .nav.yaml
-      collapse_single_pages: true
   - gen-files:
       scripts:
         - generate_reference_docs.py
+  - awesome-pages:
+      filename: .nav.yaml
+      collapse_single_pages: true
   - redirects:
       redirect_maps:
         "index.md": "introduction/welcome-to-pants.md"

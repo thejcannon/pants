@@ -44,6 +44,8 @@ os.mkdir("docs/markdown/reference")
 page_by_slug = {}
 for root, _, filenames in os.walk('docs/markdown'):
     for filename in filenames:
+        if not filename.endswith(".md"):
+            continue
         file_path = os.path.join(root, filename)
         with open(file_path, "r") as file:
             text = file.read()
@@ -338,7 +340,6 @@ NAV = [
             "ci-for-macos-on-arm64",
         ]}},
     ]},},
-    {"Reference": {"dir": "reference", "sub": []}},
     {"Tutorials": {"dir": "tutorials", "sub": [
         "test-custom-plugin-goal",
         "create-a-new-goal",
@@ -349,7 +350,6 @@ def get_dirname(unary_dict):
     return next(iter(unary_dict.values()))["dir"]
 
 def make_nav(base, sections):
-
     result = []
     for section in sections:
         if isinstance(section, str):
@@ -368,8 +368,17 @@ def make_nav(base, sections):
                 for s in result
             ]
         ))
-        file.write("\n")
 
+
+os.mkdir("docs/markdown/reference/goals")
+os.mkdir("docs/markdown/reference/subsystems")
 make_nav("docs/markdown", NAV)
+with open("docs/markdown/.nav.yaml", "a") as file:
+    file.write("\n  - Reference: reference")
+
+with open("docs/markdown/reference/.nav.yaml", "w") as f:
+    f.write(
+        "nav:\n  - Global Options: global-options.md\n  - Goals: goals\n  - Subsystems: subsystems\n  - Targets: targets"
+    )
 
 # subprocess.check_call(["npx", "prettier", "--write docs/"])

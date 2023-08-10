@@ -1,5 +1,4 @@
 [GLOBAL]
-pants_version = "2.18.0.dev6"
 print_stacktrace = true
 
 # Enable our custom loose-source plugins.
@@ -82,6 +81,10 @@ unmatched_build_file_globs = "error"
 # network codepaths is needed. See:
 #   https://github.com/pantsbuild/pants/issues/16096.
 cache_content_behavior = "fetch"
+
+[DEFAULT]
+# Tell `scie-pants` to use our `./pants` bootstrap script.
+delegate_bootstrap = true
 
 [anonymous-telemetry]
 enabled = true

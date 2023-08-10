@@ -18,12 +18,18 @@ jobs:
   build_docs:
     name: Build Experimental Docs
     runs-on: ubuntu-latest
+    env:
+     MODE: DEBUG
     steps:
       - name: Check out code
         uses: actions/checkout@v3
         with:
           repository: thejcannon/pants
           ref: jcannon/documentation
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
       - name: Convert docs
         run: |
           yq eval '.site_url = "https://thejcannon.github.io/pants/docs"' -i docs/mkdocs.yml

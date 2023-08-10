@@ -21,17 +21,20 @@ jobs:
     env:
      MODE: DEBUG
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-        with:
-          repository: thejcannon/pants
-          ref: jcannon/documentation
       - name: Pants on  
         run: |
           curl --proto ''=https'' --tlsv1.2 -fsSL https://static.pantsbuild.org/setup/get-pants.sh | bash -
           echo "$HOME/bin" | tee -a $GITHUB_PATH
       - name: Run pants version
-        run: pants --version
+        run: pants --version    
+      - name: Generate help info
+        run: |
+          pants --plugins=[] --no-verify-config --backend-packages='["pants.backend.build_files.fix.deprecations","pants.backend.build_files.fmt.black","pants.backend.build_files.fmt.buildifier","pants.backend.build_files.fmt.yapf","pants.backend.awslambda.python","pants.backend.codegen.protobuf.lint.buf","pants.backend.codegen.protobuf.python","pants.backend.codegen.thrift.apache.python","pants.backend.docker","pants.backend.docker.lint.hadolint","pants.backend.experimental.adhoc","pants.backend.experimental.codegen.protobuf.go","pants.backend.experimental.codegen.protobuf.java","pants.backend.experimental.codegen.protobuf.scala","pants.backend.experimental.go","pants.backend.experimental.helm","pants.backend.experimental.java","pants.backend.experimental.java.lint.google_java_format","pants.backend.experimental.kotlin","pants.backend.experimental.kotlin.lint.ktlint","pants.backend.experimental.openapi","pants.backend.experimental.openapi.lint.spectral","pants.backend.experimental.python","pants.backend.experimental.python.framework.stevedore","pants.backend.experimental.python.lint.add_trailing_comma","pants.backend.experimental.python.lint.autoflake","pants.backend.experimental.python.lint.pyupgrade","pants.backend.experimental.python.packaging.pyoxidizer","pants.backend.experimental.scala","pants.backend.experimental.scala.lint.scalafmt","pants.backend.experimental.terraform","pants.backend.experimental.tools.workunit_logger","pants.backend.experimental.tools.yamllint","pants.backend.google_cloud_function.python","pants.backend.plugin_development","pants.backend.python","pants.backend.python.lint.bandit","pants.backend.python.lint.black","pants.backend.python.lint.docformatter","pants.backend.python.lint.flake8","pants.backend.python.lint.isort","pants.backend.python.lint.pydocstyle","pants.backend.python.lint.pylint","pants.backend.python.lint.yapf","pants.backend.python.mixed_interpreter_constraints","pants.backend.python.typecheck.mypy","pants.backend.python.typecheck.pytype","pants.backend.shell","pants.backend.shell.lint.shellcheck","pants.backend.shell.lint.shfmt","pants.backend.tools.preamble"]' help-all > help-all.json
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          repository: thejcannon/pants
+          ref: jcannon/documentation
       - name: Convert docs
         run: |
           yq eval '.site_url = "https://thejcannon.github.io/pants/docs"' -i docs/mkdocs.yml

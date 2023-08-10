@@ -26,53 +26,8 @@ jobs:
         with:
           repository: thejcannon/pants
           ref: jcannon/documentation
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      - name: Cache Rust toolchain
-        uses: actions/cache@v3
-        with:
-          key: Linux-ARM64-rustup-${{ hashFiles('rust-toolchain') }}-v2
-          path: '~/.rustup/toolchains/1.71.1-*
-
-            ~/.rustup/update-hashes
-
-            ~/.rustup/settings.toml
-
-            '
-      - name: Cache Rust toolchain
-        uses: actions/cache@v3
-        with:
-          key: Linux-x86_64-rustup-${{ hashFiles('rust-toolchain') }}-v2
-          path: '~/.rustup/toolchains/1.71.1-*
-
-            ~/.rustup/update-hashes
-
-            ~/.rustup/settings.toml
-
-            '
-      - name: Cache Cargo
-        uses: benjyw/rust-cache@461b9f8eee66b575bce78977bf649b8b7a8d53f1
-        with:
-          cache-bin: 'false'
-          shared-key: engine
-          workspaces: src/rust/engine
-      - id: get-engine-hash
-        name: Get native engine hash
-        run: echo "hash=$(./build-support/bin/rust/print_engine_hash.sh)" >> $GITHUB_OUTPUT
-        shell: bash
-      - name: Cache native engine
-        uses: actions/cache@v3
-        with:
-          key: Linux-x86_64-engine-${{ steps.get-engine-hash.outputs.hash }}-v1
-          path: 'src/python/pants/bin/native_client
-
-            src/python/pants/engine/internals/native_engine.so
-
-            src/python/pants/engine/internals/native_engine.so.metadata'
-      - name: Bootstrap Pants
-        run: ./pants version > ${{ runner.temp }}/_pants_version.stdout && [[ -s ${{ runner.temp }}/_pants_version.stdout ]]
+      - name: Run pants version
+        run: pants --version
       - name: Convert docs
         run: |
           yq eval '.site_url = "https://thejcannon.github.io/pants/docs"' -i docs/mkdocs.yml

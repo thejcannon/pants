@@ -19,7 +19,7 @@ jobs:
     name: Build Experimental Docs
     runs-on: ubuntu-latest
     env:
-     MODE: DEBUG
+     PANTS_VERSION: 2.18.0.dev6
     steps:
       - name: Pants on  
         run: |

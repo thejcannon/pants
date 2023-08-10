@@ -27,7 +27,9 @@ jobs:
           repository: thejcannon/pants
           ref: jcannon/documentation
       - name: Run pants version
-        run: pants --version
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://static.pantsbuild.org/setup/get-pants.sh | bash
+          pants --version
       - name: Convert docs
         run: |
           yq eval '.site_url = "https://thejcannon.github.io/pants/docs"' -i docs/mkdocs.yml

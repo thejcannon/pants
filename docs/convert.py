@@ -55,6 +55,9 @@ for root, _, filenames in os.walk('docs/markdown'):
 
 for root, _, filenames in os.walk('docs/markdown'):
     for filename in filenames:
+        if not filename.endswith(".md"):
+            continue
+
         file_path = os.path.join(root, filename)
         with open(file_path, "r") as file:
             text = file.read()

@@ -12,7 +12,7 @@ theme:
     text: system-ui
     code: Roboto Mono
   logo: assets/images/logo.png
-  favicon: assets/images/favicon.png
+  favicon: assets/images/favicon.ico
   features:
     - content.action.edit
     - content.action.view
